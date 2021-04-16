@@ -12,7 +12,8 @@ type config struct {
 	ClientID     string
 	ClientSecret string
 
-	CookieSecret string
+	CookieSecret   string
+	InsecureCookie bool
 }
 
 // cfg provides parsed runtime configuration as a convenient global variable.
@@ -41,4 +42,8 @@ func init() {
 		logrus.Fatalln("COOKIE_SECRET not set")
 	}
 
+	insecureCookie := os.Getenv("INSECURE_COOKIE")
+	if insecureCookie != "" && insecureCookie != "false" && insecureCookie != "0" {
+		cfg.InsecureCookie = true
+	}
 }

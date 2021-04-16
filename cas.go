@@ -29,11 +29,12 @@ type userAttributes struct {
 
 func init() {
 	store = sessions.NewCookieStore([]byte(cfg.CookieSecret))
-	// TODO: SameSite, Secure
 	store.Options = &sessions.Options{
 		Path:     "/cas/",
 		MaxAge:   86400,
+		Secure:   !cfg.InsecureCookie,
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
 	}
 }
 
