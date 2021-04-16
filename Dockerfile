@@ -28,5 +28,7 @@ COPY --from=builder /go/bin/auth0-cas-server-go /go/bin/auth0-cas-server-go
 
 USER appuser:appgroup
 
+EXPOSE 8080
+
 # Command to run
-ENTRYPOINT ["/go/bin/auth0-cas-server-go"]
+ENTRYPOINT ["/go/bin/auth0-cas-server-go", "-p=8080"]
