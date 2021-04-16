@@ -17,7 +17,7 @@ import (
 var store *sessions.CookieStore
 
 type userAttributes struct {
-	Username   string   `json:"username,omitempty"`
+	Username   string   `json:"https://sso.linuxfoundation.org/claims/username,omitempty"`
 	Email      string   `json:"email,omitempty"`
 	FullName   string   `json:"name,omitempty"`
 	FamilyName string   `json:"family_name,omitempty"`
@@ -257,6 +257,9 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error generating validation response", http.StatusInternalServerError)
 		return
 	}
+
+	appLogger(r).WithField("body", output).Debug("sending validation response")
+
 	switch useJSON {
 	case true:
 		w.Header().Set("Content-Type", "application/json;charset=UTF-8")

@@ -93,7 +93,7 @@ func validationResponse(success *casAuthenticationSuccess, failure *casAuthentic
 func (attr *casAttributes) Normalize() {
 	// Set AttraStyle to the default "jasig" if unset.
 	if attr.AttraStyle == "" {
-		attr.AttraStyle = "jasig"
+		attr.AttraStyle = "Jasig"
 	}
 
 	// Normalize name(s).
