@@ -134,6 +134,16 @@ func getAuth0Clients(ctx context.Context) ([]auth0ClientStub, error) {
 }
 
 func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0ClientStub, error) {
+	service, err := url.Parse(serviceURL)
+	if err != nil {
+		// Simply treat malformed URLs as "no match".
+		return nil, nil
+	}
+	// Strip queries and fragments from the URL.
+	service.RawQuery = ""
+	service.Fragment = ""
+	serviceURL = service.String()
+
 	if item, exists := auth0Cache.Get("cas-service-url/" + url.PathEscape(serviceURL)); exists {
 		client := item.(auth0ClientStub)
 		return &client, nil

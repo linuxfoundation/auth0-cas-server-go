@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/gorilla/sessions"
@@ -65,15 +64,6 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gateway, _ := strconv.ParseBool(params.Get("gateway"))
-	if gateway {
-		appLogger(r).Error("gateway mode not implemented")
-		http.Error(w, "gateway mode not implemented", http.StatusNotImplemented)
-		return
-	}
-
-	renew, _ := strconv.ParseBool(params.Get("renew"))
-
 	casClient, err := getAuth0ClientByService(r.Context(), service)
 	if err != nil {
 		appLogger(r).WithError(err).Error("error looking up service")
@@ -87,6 +77,15 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	appLogger(r).WithField("client", casClient).Debug("found client")
+
+	renew := params.Get("renew")
+
+	gateway := params.Get("gateway")
+	if renew == "" && gateway != "" {
+		// TODO: use prompt=none to implement gateway mode below.
+		http.Redirect(w, r, service, http.StatusFound)
+		return
+	}
 
 	c := 9
 	b := make([]byte, c)
@@ -108,8 +107,9 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 	// TODO: use prompt=none to implement gateway mode.
 	config := oauth2CfgFromAuth0Client(*casClient, r.Host)
 	var authURL string
-	switch renew {
-	case true:
+	switch {
+	case renew != "":
+		// Renew is "set" if present, regardless of value.
 		authURL = config.AuthCodeURL(state, oauth2.SetAuthURLParam("prompt", "login"))
 	default:
 		authURL = config.AuthCodeURL(state)
