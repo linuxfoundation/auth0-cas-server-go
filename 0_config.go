@@ -11,6 +11,8 @@ type config struct {
 	Auth0Domain  string
 	ClientID     string
 	ClientSecret string
+
+	CookieSecret string
 }
 
 // cfg provides parsed runtime configuration as a convenient global variable.
@@ -33,4 +35,10 @@ func init() {
 	if cfg.ClientSecret == "" {
 		logrus.Fatalln("CLIENT_SECRET not set")
 	}
+
+	cfg.CookieSecret = os.Getenv("COOKIE_SECRET")
+	if cfg.CookieSecret == "" {
+		logrus.Fatalln("COOKIE_SECRET not set")
+	}
+
 }

@@ -38,13 +38,10 @@ func main() {
 		fmt.Fprintf(w, "OK\n")
 	})
 
-	http.HandleFunc("/cas/login", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			http.NotFound(w, r)
-			return
-		}
-		http.Error(w, "501 not implemented", http.StatusNotImplemented)
-	})
+	http.HandleFunc("/cas/login", casLogin)
+	http.HandleFunc("/cas/logout", casLogout)
+	http.HandleFunc("/cas/serviceValidate", casServiceValidate)
+	http.HandleFunc("/cas/oidc_callback", oauth2Callback)
 
 	// Set up http listener using provided command line parameters.
 	var addr string
@@ -57,4 +54,16 @@ func main() {
 	if err != nil {
 		logrus.WithField("err", err).Fatal("http listener error")
 	}
+
+}
+
+func appLogger(r *http.Request) *logrus.Entry {
+	e := logrus.WithFields(logrus.Fields{
+		"method": r.Method,
+		"url":    r.URL.Path,
+		"query":  r.URL.RawQuery,
+		"client": r.RemoteAddr,
+	})
+
+	return e
 }
