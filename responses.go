@@ -31,17 +31,23 @@ type casAuthenticationSuccess struct {
 }
 
 type casAttributes struct {
-	AttraStyle string   `json:"-" xml:"cas:attraStyle"`
-	Email      string   `json:"email" xml:"cas:mail"`
-	FullName   string   `json:"name" xml:"cas:field_lf_full_name"`
-	GivenName  string   `json:"given_name" xml:"cas:field_lf_first_name"`
-	FamilyName string   `json:"family_name" xml:"cas:field_lf_last_name"`
-	Timezone   string   `json:"timezone,omitempty" xml:"cas:timezone,omitempty"`
-	Groups     []string `json:"groups" xml:"cas:group,omitempty"`
-
-	FullNameOld   string `json:"-" xml:"cas:profile_name_full"`
-	GivenNameOld  string `json:"-" xml:"cas:profile_name_first"`
-	FamilyNameOld string `json:"-" xml:"cas:profile_name_last"`
+	// The order of the struct attributes matters. XML is an inherently ordered
+	// document, and we are preserving as much as possible the output from
+	// our reference implementation. (Including first/full/last for field_* but
+	// first/last/full for profile_*).
+	AttraStyle    string   `json:"-" xml:"cas:attraStyle"`
+	UID           string   `json:"-" xml:"cas:uid"`
+	Email         string   `json:"email" xml:"cas:mail"`
+	Created       uint64   `json:"-" xml:"cas:created"`
+	Timezone      string   `json:"timezone,omitempty" xml:"cas:timezone,omitempty"`
+	Language      string   `json:"-" xml:"cas:language"`
+	Groups        []string `json:"groups" xml:"cas:group,omitempty"`
+	GivenName     string   `json:"given_name" xml:"cas:field_lf_first_name"`
+	FullName      string   `json:"name" xml:"cas:field_lf_full_name"`
+	FamilyName    string   `json:"family_name" xml:"cas:field_lf_last_name"`
+	GivenNameOld  string   `json:"-" xml:"cas:profile_name_first"`
+	FamilyNameOld string   `json:"-" xml:"cas:profile_name_last"`
+	FullNameOld   string   `json:"-" xml:"cas:profile_name_full"`
 }
 
 type casAuthenticationFailure struct {
@@ -80,7 +86,12 @@ func validationResponse(success *casAuthenticationSuccess, failure *casAuthentic
 	case true:
 		output, err = json.MarshalIndent(response, "", "  ")
 	default:
-		output, err = xml.MarshalIndent(response.ServiceResponse, "", "  ")
+		output, err = xml.MarshalIndent(response.ServiceResponse, "<repl />", "")
+		// Hack to have newlines but no indentation.
+		xmlFix := strings.ReplaceAll(string(output), "<repl />", "")
+		// Some clients aren't implementing XML correctly.
+		xmlFix = strings.ReplaceAll(xmlFix, `"`, "'")
+		output = []byte(xmlFix)
 	}
 	if err != nil {
 		return "", err
