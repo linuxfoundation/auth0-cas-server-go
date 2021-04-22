@@ -1,13 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
 type config struct {
+	Auth0Tenant  string
 	Auth0Domain  string
 	ClientID     string
 	ClientSecret string
@@ -24,9 +27,18 @@ func init() {
 	// Optionally load environment from a .env file.
 	_ = godotenv.Load()
 
+	cfg.Auth0Tenant = os.Getenv("AUTH0_TENANT")
+	if cfg.Auth0Tenant == "" {
+		logrus.Fatalln("AUTH0_TENANT not set")
+	}
+	if strings.ContainsAny(strings.TrimSuffix(cfg.Auth0Tenant, ".us"), "./:") {
+		// .us is allowed, but otherwise AUTH0_TENANT cannot contain anything
+		// looking like a domain name or URL.
+		logrus.Fatalln("invalid AUTH0_TENANT")
+	}
 	cfg.Auth0Domain = os.Getenv("AUTH0_DOMAIN")
 	if cfg.Auth0Domain == "" {
-		logrus.Fatalln("AUTH0_DOMAIN not set")
+		cfg.Auth0Domain = fmt.Sprintf("%s.auth0.com", cfg.Auth0Tenant)
 	}
 	cfg.ClientID = os.Getenv("CLIENT_ID")
 	if cfg.ClientID == "" {

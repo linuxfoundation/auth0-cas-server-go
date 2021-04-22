@@ -27,9 +27,9 @@ func init() {
 	auth0AuthConfig := clientcredentials.Config{
 		ClientID:     cfg.ClientID,
 		ClientSecret: cfg.ClientSecret,
-		TokenURL:     fmt.Sprintf("https://%s/oauth/token", cfg.Auth0Domain),
+		TokenURL:     fmt.Sprintf("https://%s.auth0.com/oauth/token", cfg.Auth0Tenant),
 		EndpointParams: url.Values{
-			"audience": {fmt.Sprintf("https://%s/api/v2/", cfg.Auth0Domain)},
+			"audience": {fmt.Sprintf("https://%s.auth0.com/api/v2/", cfg.Auth0Tenant)},
 		},
 	}
 	auth0Client = auth0AuthConfig.Client(context.Background())
@@ -86,7 +86,7 @@ func getAuth0Clients(ctx context.Context) ([]auth0ClientStub, error) {
 	allClients := []auth0ClientStub{}
 
 	for {
-		uri := fmt.Sprintf("https://%s/api/v2/clients?%s", cfg.Auth0Domain, v.Encode())
+		uri := fmt.Sprintf("https://%s.auth0.com/api/v2/clients?%s", cfg.Auth0Tenant, v.Encode())
 		req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
 		if err != nil {
 			return nil, err
