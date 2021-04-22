@@ -38,9 +38,16 @@ func main() {
 		fmt.Fprintf(w, "OK\n")
 	})
 
+	// CAS protocol 2 and 3.
 	http.HandleFunc("/cas/login", casLogin)
 	http.HandleFunc("/cas/logout", casLogout)
 	http.HandleFunc("/cas/serviceValidate", casServiceValidate)
+	http.HandleFunc("/cas/p3/serviceValidate", casServiceValidate)
+	http.HandleFunc("/cas/proxyValidate", casServiceValidate)
+	http.HandleFunc("/cas/p3/proxyValidate", casServiceValidate)
+	http.HandleFunc("/cas/proxy", casProxy)
+
+	// Interstitial page to implement OIDC callback to redirect to CAS service.
 	http.HandleFunc("/cas/oidc_callback", oauth2Callback)
 
 	// Set up http listener using provided command line parameters.

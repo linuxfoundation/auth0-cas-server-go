@@ -153,8 +153,7 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	case formatParam == "JSON":
 		useJSON = true
 	case formatParam != "" && formatParam != "XML":
-		appLogger(r).Error("format not implemented")
-		http.Error(w, "format not implemented", http.StatusNotImplemented)
+		outputFailure(w, r, nil, "INVALID_REQUEST", "invalid format", useJSON)
 		return
 	}
 
@@ -170,10 +169,28 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pgtURL := params.Get("pgtUrl")
+	if pgtURL != "" {
+		outputFailure(w, r, nil, "INTERNAL_ERROR", "proxy callbacks not implemented", useJSON)
+		return
+	}
+
+	if strings.HasPrefix(ticket, "PT-") {
+		// We don't issue proxy tickets (/proxy always returns
+		// UNAUTHORIZED_SERVICE), so any proxy ticket is not recognized.
+		outputFailure(w, r, nil, "INVALID_TICKET", "ticket not recognized", useJSON)
+		return
+	}
+
+	if !strings.HasPrefix(ticket, "ST-") {
+		outputFailure(w, r, nil, "INVALID_TICKET_SPEC", "invalid ticket", useJSON)
+		return
+	}
+
 	authCode := strings.TrimPrefix(ticket, "ST-A")
 	if authCode == ticket {
 		// Not having an ST-A prefix means the ticket is unknown; see oauth2Callback.
-		outputFailure(w, r, nil, "INVALID_TICKET", "ticket failed validation", useJSON)
+		outputFailure(w, r, nil, "INVALID_TICKET", "foreign ticket not recognized", useJSON)
 		return
 	}
 
@@ -267,6 +284,45 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/xml;charset=UTF-8")
 	}
 	fmt.Fprintf(w, "%s\n", output)
+}
+
+func casProxy(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Expires", "Sun, 19 Nov 1978 05:00:00 GMT")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+
+	if r.Method != "GET" && r.Method != "POST" {
+		http.NotFound(w, r)
+		return
+	}
+
+	params := r.URL.Query()
+
+	var useJSON bool
+	formatParam := params.Get("format")
+	switch {
+	case formatParam == "JSON":
+		useJSON = true
+	case formatParam != "" && formatParam != "XML":
+		outputFailure(w, r, nil, "INVALID_REQUEST", "invalid format", useJSON)
+		return
+	}
+
+	pgt := params.Get("pgt")
+	if pgt == "" {
+		outputFailure(w, r, nil, "INVALID_REQUEST", "pgt parameter is required", useJSON)
+		return
+	}
+
+	targetService := params.Get("targetService")
+	if targetService == "" {
+		outputFailure(w, r, nil, "INVALID_REQUEST", "targetService parameter is required", useJSON)
+		return
+	}
+
+	// Deny all proxy-grant-ticket requests.
+	outputFailure(w, r, nil, "UNAUTHORIZED_SERVICE", "not authorized for proxy requests", useJSON)
 }
 
 func oauth2Callback(w http.ResponseWriter, r *http.Request) {
