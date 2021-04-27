@@ -69,8 +69,21 @@ func appLogger(r *http.Request) *logrus.Entry {
 		"method": r.Method,
 		"url":    r.URL.Path,
 		"query":  r.URL.RawQuery,
-		"client": r.RemoteAddr,
 	})
+
+	var headerIP string
+	if cfg.RemoteIPHeader != "" {
+		headerIP = r.Header.Get(cfg.RemoteIPHeader)
+	}
+
+	switch headerIP {
+	case "":
+		// Log the client IP.
+		e = e.WithField("client", r.RemoteAddr)
+	default:
+		// Log the IP recorded in the configured header.
+		e = e.WithField("client", headerIP)
+	}
 
 	return e
 }

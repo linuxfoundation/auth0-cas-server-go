@@ -17,6 +17,8 @@ type config struct {
 
 	CookieSecret   string
 	InsecureCookie bool
+
+	RemoteIPHeader string
 }
 
 // cfg provides parsed runtime configuration as a convenient global variable.
@@ -58,4 +60,8 @@ func init() {
 	if insecureCookie != "" && insecureCookie != "false" && insecureCookie != "0" {
 		cfg.InsecureCookie = true
 	}
+
+	// Look up client IPs in a header set by a proxy, if present. Only intended
+	// for simple headers with one client IP; does not parse X-Forwarded-For.
+	cfg.RemoteIPHeader = os.Getenv("REMOTE_IP_HEADER")
 }
