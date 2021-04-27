@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "expvar"
 	"flag"
 	"fmt"
@@ -8,6 +9,12 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+)
+
+type contextID int
+
+const (
+	logEntryID contextID = iota
 )
 
 // main parses optional flags and starts http listener.
@@ -64,7 +71,23 @@ func main() {
 
 }
 
-func appLogger(r *http.Request) *logrus.Entry {
+func withLogger(ctx context.Context, logger *logrus.Entry) context.Context {
+	return context.WithValue(ctx, logEntryID, logger)
+}
+
+func appLogger(ctx context.Context) *logrus.Entry {
+	if ctx == nil {
+		return &logrus.Entry{}
+	}
+
+	if logger, ok := ctx.Value(logEntryID).(*logrus.Entry); ok {
+		return logger
+	}
+
+	return &logrus.Entry{}
+}
+
+func requestLogger(r *http.Request) *logrus.Entry {
 	e := logrus.WithFields(logrus.Fields{
 		"method": r.Method,
 		"url":    r.URL.Path,

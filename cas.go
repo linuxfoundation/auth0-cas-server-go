@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -43,6 +44,8 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Expires", "Sun, 19 Nov 1978 05:00:00 GMT")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
+	ctx := withLogger(r.Context(), requestLogger(r))
+
 	if r.Method != "GET" && r.Method != "POST" {
 		http.NotFound(w, r)
 		return
@@ -52,31 +55,31 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 
 	service := params.Get("service")
 	if service == "" {
-		appLogger(r).Warning("service parameter is required")
+		appLogger(ctx).Warning("service parameter is required")
 		http.Error(w, "service parameter is required", http.StatusBadRequest)
 		return
 	}
 
 	if _, err := url.Parse(service); err != nil {
 		// We don't use this now, but better to catch here than in oauth2Callback.
-		appLogger(r).Warning("invalid service URL")
+		appLogger(ctx).Warning("invalid service URL")
 		http.Error(w, "invalid service URL", http.StatusBadRequest)
 		return
 	}
 
-	casClient, err := getAuth0ClientByService(r.Context(), service)
+	casClient, err := getAuth0ClientByService(ctx, service)
 	if err != nil {
-		appLogger(r).WithError(err).Error("error looking up service")
+		appLogger(ctx).WithError(err).Error("error looking up service")
 		http.Error(w, "error looking up service", http.StatusInternalServerError)
 		return
 	}
 	if casClient == nil {
-		appLogger(r).Warning("unknown service")
+		appLogger(ctx).Warning("unknown service")
 		http.Error(w, "unknown service", http.StatusForbidden)
 		return
 	}
 
-	appLogger(r).WithField("client", casClient).Debug("found client")
+	appLogger(ctx).WithField("auth0_client", casClient).Debug("found client")
 
 	renew := params.Get("renew")
 
@@ -98,7 +101,7 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 	// without returning from any of them.
 	err = session.Save(r, w)
 	if err != nil {
-		appLogger(r).WithError(err).Error("error saving session")
+		appLogger(ctx).WithError(err).Error("error saving session")
 		http.Error(w, "500 internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -140,6 +143,8 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Expires", "Sun, 19 Nov 1978 05:00:00 GMT")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
+	ctx := withLogger(r.Context(), requestLogger(r))
+
 	if r.Method != "GET" && r.Method != "POST" {
 		http.NotFound(w, r)
 		return
@@ -153,106 +158,106 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	case formatParam == "JSON":
 		useJSON = true
 	case formatParam != "" && formatParam != "XML":
-		outputFailure(w, r, nil, "INVALID_REQUEST", "invalid format", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_REQUEST", "invalid format", useJSON)
 		return
 	}
 
 	service := params.Get("service")
 	if service == "" {
-		outputFailure(w, r, nil, "INVALID_REQUEST", "service parameter is required", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_REQUEST", "service parameter is required", useJSON)
 		return
 	}
 
 	ticket := params.Get("ticket")
 	if ticket == "" {
-		outputFailure(w, r, nil, "INVALID_REQUEST", "ticket parameter is required", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_REQUEST", "ticket parameter is required", useJSON)
 		return
 	}
 
 	pgtURL := params.Get("pgtUrl")
 	if pgtURL != "" {
-		outputFailure(w, r, nil, "INTERNAL_ERROR", "proxy callbacks not implemented", useJSON)
+		outputFailure(ctx, w, r, nil, "INTERNAL_ERROR", "proxy callbacks not implemented", useJSON)
 		return
 	}
 
 	if strings.HasPrefix(ticket, "PT-") {
 		// We don't issue proxy tickets (/proxy always returns
 		// UNAUTHORIZED_SERVICE), so any proxy ticket is not recognized.
-		outputFailure(w, r, nil, "INVALID_TICKET", "ticket not recognized", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_TICKET", "ticket not recognized", useJSON)
 		return
 	}
 
 	if !strings.HasPrefix(ticket, "ST-") {
-		outputFailure(w, r, nil, "INVALID_TICKET_SPEC", "invalid ticket", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_TICKET_SPEC", "invalid ticket", useJSON)
 		return
 	}
 
 	authCode := strings.TrimPrefix(ticket, "ST-A")
 	if authCode == ticket {
 		// Not having an ST-A prefix means the ticket is unknown; see oauth2Callback.
-		outputFailure(w, r, nil, "INVALID_TICKET", "foreign ticket not recognized", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_TICKET", "foreign ticket not recognized", useJSON)
 		return
 	}
 
-	casClient, err := getAuth0ClientByService(r.Context(), service)
+	casClient, err := getAuth0ClientByService(ctx, service)
 	if err != nil {
-		outputFailure(w, r, err, "INTERNAL_ERROR", "error looking up service", useJSON)
+		outputFailure(ctx, w, r, err, "INTERNAL_ERROR", "error looking up service", useJSON)
 		return
 	}
 	if casClient == nil {
-		outputFailure(w, r, nil, "INVALID_SERVICE", "unknown service", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_SERVICE", "unknown service", useJSON)
 		return
 	}
 
-	appLogger(r).WithField("client", casClient).Debug("found client")
+	appLogger(ctx).WithField("auth0_client", casClient).Debug("found client")
 
 	config := oauth2CfgFromAuth0Client(*casClient, r.Host)
-	token, err := config.Exchange(r.Context(), authCode)
+	token, err := config.Exchange(ctx, authCode)
 
 	if err != nil {
 		if rErr, ok := err.(*oauth2.RetrieveError); ok {
 			if rErr.Response.StatusCode == 403 {
 				// Rather than decoding the JSON payload, we can assume a 403 means the
 				// auth code (as provided as a CAS service ticket) was invalid.
-				outputFailure(w, r, nil, "INVALID_TICKET", "invalid ticket", useJSON)
+				outputFailure(ctx, w, r, nil, "INVALID_TICKET", "invalid ticket", useJSON)
 				return
 			}
 		}
 		// Handle any other error (non-403 responses or HTTP errors).
-		outputFailure(w, r, err, "INTERNAL_ERROR", "error validating ticket", useJSON)
+		outputFailure(ctx, w, r, err, "INTERNAL_ERROR", "error validating ticket", useJSON)
 		return
 	}
 
 	uri := fmt.Sprintf("https://%s/userinfo", cfg.Auth0Domain)
-	req, err := http.NewRequestWithContext(r.Context(), "GET", uri, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
 	if err != nil {
-		outputFailure(w, r, err, "INTERNAL_ERROR", "error creating user profile request", useJSON)
+		outputFailure(ctx, w, r, err, "INTERNAL_ERROR", "error creating user profile request", useJSON)
 		return
 	}
 	token.SetAuthHeader(req)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		outputFailure(w, r, err, "INTERNAL_ERROR", "error fetching user profile", useJSON)
+		outputFailure(ctx, w, r, err, "INTERNAL_ERROR", "error fetching user profile", useJSON)
 		return
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		outputFailure(w, r, err, "INTERNAL_ERROR", "error reading user profile response", useJSON)
+		outputFailure(ctx, w, r, err, "INTERNAL_ERROR", "error reading user profile response", useJSON)
 		return
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		err := fmt.Errorf("userinfo returned %v: %s", resp.StatusCode, string(bodyBytes))
-		outputFailure(w, r, err, "INTERNAL_ERROR", "user profile response error", useJSON)
+		outputFailure(ctx, w, r, err, "INTERNAL_ERROR", "user profile response error", useJSON)
 		return
 	}
 
 	user := new(userAttributes)
 	err = json.Unmarshal(bodyBytes, user)
 	if err != nil {
-		outputFailure(w, r, err, "INTERNAL_ERROR", "user profile parse error", useJSON)
+		outputFailure(ctx, w, r, err, "INTERNAL_ERROR", "user profile parse error", useJSON)
 		return
 	}
 
@@ -269,13 +274,13 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	}
 	output, err := validationResponse(&success, nil, useJSON)
 	if err != nil {
-		appLogger(r).WithError(err).WithField("success", success).Error("error generating validation response")
+		appLogger(ctx).WithError(err).WithField("success", success).Error("error generating validation response")
 		w.WriteHeader(http.StatusInternalServerError)
 		http.Error(w, "error generating validation response", http.StatusInternalServerError)
 		return
 	}
 
-	appLogger(r).WithField("body", output).Debug("sending validation response")
+	appLogger(ctx).WithField("body", output).Debug("sending validation response")
 
 	switch useJSON {
 	case true:
@@ -292,6 +297,8 @@ func casProxy(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Expires", "Sun, 19 Nov 1978 05:00:00 GMT")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
+	ctx := withLogger(r.Context(), requestLogger(r))
+
 	if r.Method != "GET" && r.Method != "POST" {
 		http.NotFound(w, r)
 		return
@@ -305,24 +312,24 @@ func casProxy(w http.ResponseWriter, r *http.Request) {
 	case formatParam == "JSON":
 		useJSON = true
 	case formatParam != "" && formatParam != "XML":
-		outputFailure(w, r, nil, "INVALID_REQUEST", "invalid format", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_REQUEST", "invalid format", useJSON)
 		return
 	}
 
 	pgt := params.Get("pgt")
 	if pgt == "" {
-		outputFailure(w, r, nil, "INVALID_REQUEST", "pgt parameter is required", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_REQUEST", "pgt parameter is required", useJSON)
 		return
 	}
 
 	targetService := params.Get("targetService")
 	if targetService == "" {
-		outputFailure(w, r, nil, "INVALID_REQUEST", "targetService parameter is required", useJSON)
+		outputFailure(ctx, w, r, nil, "INVALID_REQUEST", "targetService parameter is required", useJSON)
 		return
 	}
 
 	// Deny all proxy-grant-ticket requests.
-	outputFailure(w, r, nil, "UNAUTHORIZED_SERVICE", "not authorized for proxy requests", useJSON)
+	outputFailure(ctx, w, r, nil, "UNAUTHORIZED_SERVICE", "not authorized for proxy requests", useJSON)
 }
 
 func oauth2Callback(w http.ResponseWriter, r *http.Request) {
@@ -330,6 +337,8 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Expires", "Sun, 19 Nov 1978 05:00:00 GMT")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+
+	ctx := withLogger(r.Context(), requestLogger(r))
 
 	if r.Method != "GET" {
 		http.NotFound(w, r)
@@ -342,21 +351,21 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	errDescription := params.Get("error_description")
 	if errParam != "" {
 		err := fmt.Errorf("%s: %s", errParam, errDescription)
-		appLogger(r).WithError(err).Error("login error")
+		appLogger(ctx).WithError(err).Error("login error")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	code := params.Get("code")
 	if code == "" {
-		appLogger(r).Warning("invalid request")
+		appLogger(ctx).Warning("invalid request")
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	state := params.Get("state")
 	if state == "" {
-		appLogger(r).Warning("missing state")
+		appLogger(ctx).Warning("missing state")
 		http.Error(w, "missing state", http.StatusBadRequest)
 		return
 	}
@@ -365,7 +374,7 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	var service string
 	var ok bool
 	if service, ok = session.Values[state].(string); !ok {
-		appLogger(r).Warning("session missing or expired")
+		appLogger(ctx).Warning("session missing or expired")
 		http.Error(w, "session missing or expired", http.StatusBadRequest)
 		return
 	}
@@ -375,7 +384,7 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 
 	serviceURL, err := url.Parse(service)
 	if err != nil {
-		appLogger(r).Warning("invalid service URL")
+		appLogger(ctx).Warning("invalid service URL")
 		http.Error(w, "invalid service URL", http.StatusBadRequest)
 		return
 	}
@@ -416,18 +425,18 @@ func oauth2CfgFromAuth0Client(client auth0ClientStub, casHostname string) oauth2
 // error. This logs the issue, and formats and outputs the response (default
 // 200 status code). If the response cannot be formatted, an additional error
 // is logged and a plain-text message and 500 response is output.
-func outputFailure(w http.ResponseWriter, r *http.Request, err error, code, description string, useJSON bool) {
+func outputFailure(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, code, description string, useJSON bool) {
 	switch {
 	case err != nil:
-		appLogger(r).WithError(err).Error(description)
+		appLogger(ctx).WithError(err).Error(description)
 	default:
-		appLogger(r).Warning(description)
+		appLogger(ctx).Warning(description)
 	}
 
 	failure := casAuthenticationFailure{code, description}
 	output, err := validationResponse(nil, &failure, useJSON)
 	if err != nil {
-		appLogger(r).WithError(err).WithField("failure", failure).Error("error generating validation response")
+		appLogger(ctx).WithError(err).WithField("failure", failure).Error("error generating validation response")
 		w.WriteHeader(http.StatusInternalServerError)
 		http.Error(w, "error generating validation response", http.StatusInternalServerError)
 		return
