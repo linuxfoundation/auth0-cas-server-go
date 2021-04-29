@@ -3,6 +3,7 @@ module gitlab.com/linuxfoundation/auth0/auth0-cas-server-go
 go 1.16
 
 require (
+	github.com/bmatcuk/doublestar/v4 v4.0.1
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/sessions v1.2.1
 	github.com/joho/godotenv v1.3.1-0.20210304093531-ddf83eb33bbb

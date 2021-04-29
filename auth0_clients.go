@@ -8,11 +8,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2/clientcredentials"
@@ -152,7 +152,7 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 	// Compare against cached globs.
 	if item, exists := auth0Cache.Get("cas-service-globs"); exists {
 		for glob, client := range item.(map[string]auth0ClientStub) {
-			match, err := filepath.Match(glob, serviceURL)
+			match, err := doublestar.Match(glob, serviceURL)
 			if err != nil {
 				appLogger(ctx).WithFields(logrus.Fields{
 					"pattern": glob,
@@ -201,7 +201,7 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 		// Iterate over any comma-delimeted cas_service globs in the
 		// client_metadata.
 		for _, glob := range serviceGlobs {
-			match, err := filepath.Match(glob, serviceURL)
+			match, err := doublestar.Match(glob, serviceURL)
 			if err != nil {
 				appLogger(ctx).WithFields(logrus.Fields{
 					"pattern": glob,
