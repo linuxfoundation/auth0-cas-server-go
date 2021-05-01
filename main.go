@@ -99,6 +99,10 @@ func requestLogger(r *http.Request) *logrus.Entry {
 		headerIP = r.Header.Get(cfg.RemoteIPHeader)
 	}
 
+	if referer := r.Header.Get("Referer"); referer != "" {
+		e = e.WithField("referer", referer)
+	}
+
 	switch headerIP {
 	case "":
 		// Log the client IP.
