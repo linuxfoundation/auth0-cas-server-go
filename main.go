@@ -54,7 +54,16 @@ func main() {
 		defer shutdownOTLP()
 
 		// Instrument http clients.
-		auth0Client.Transport = otelhttp.NewTransport(auth0Client.Transport)
+		auth0Client.Transport = otelhttp.NewTransport(
+			auth0Client.Transport,
+			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+				// Update the span name to include the remote host. This is disabled by
+				// default to avoid high-cardinality problems for services that connect
+				// to many different servers, such as with dynamic service discovery.
+				// This should not be a problem for this service.
+				return fmt.Sprintf("%s %s", r.Method, r.URL.Host)
+			}),
+		)
 		httpClient = &http.Client{Transport: otelhttp.NewTransport(nil)}
 	}
 
@@ -79,8 +88,19 @@ func main() {
 	mux := loggingHandler(http.DefaultServeMux)
 
 	if isDDTrace {
+		// Per OpenTelemetry spec, http.server_name should be a *configured* (not
+		// determined by incoming request headers) virtual host, otherwise *unset*.
+		vhost := ""
 		mux = routeTagHandler(mux)
-		mux = otelhttp.NewHandler(mux, "web.request")
+		mux = otelhttp.NewHandler(
+			mux,
+			vhost,
+			otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+				// Use "vhost/path/to/resource" as the span name. Pattern-based routers
+				// should not do this: but this service only serves up discrete paths.
+				return fmt.Sprintf("%s%s", operation, r.URL.Path)
+			}),
+		)
 	}
 
 	// Set up http listener using provided command line parameters.
@@ -97,10 +117,12 @@ func main() {
 }
 
 // routeTagHandler sets the OpenTelemetry route to the current path. Based on
-// otelhttp.WithRoute.
+// otelhttp.WithRoute, but implemented as middleware.
 func routeTagHandler(inner http.Handler) http.Handler {
 	mw := func(w http.ResponseWriter, r *http.Request) {
 		span := trace.SpanFromContext(r.Context())
+		// (Note: for pattern-based routers, replace r.URL.Path with the matched
+		// pattern!)
 		span.SetAttributes(semconv.HTTPRouteKey.String(r.URL.Path))
 		inner.ServeHTTP(w, r)
 	}
@@ -158,11 +180,11 @@ func requestLogger(r *http.Request) *logrus.Entry {
 	}
 
 	// Add trace and span IDs (if any) for log/trace correlation.
-	span := trace.SpanFromContext(r.Context())
-	if traceID := span.SpanContext().TraceID(); traceID.IsValid() {
+	spanContext := trace.SpanContextFromContext(r.Context())
+	if traceID := spanContext.TraceID(); traceID.IsValid() {
 		e = e.WithField("dd.trace_id", convertTraceID(traceID.String()))
 	}
-	if spanID := span.SpanContext().SpanID(); spanID.IsValid() {
+	if spanID := spanContext.SpanID(); spanID.IsValid() {
 		e = e.WithField("dd.span_id", convertTraceID(spanID.String()))
 	}
 

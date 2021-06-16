@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
@@ -13,23 +12,25 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/semconv"
-	"google.golang.org/grpc"
 )
+
+type otelErrorHandler struct{}
+
+func (h *otelErrorHandler) Handle(err error) {
+	logrus.WithError(err).Error("opentelemetry-go error")
+}
+
+func init() {
+	otel.SetErrorHandler(&otelErrorHandler{})
+}
 
 // Initializes an OTLP exporter, and configures the corresponding trace and
 // metric providers. Returns a shutdown function.
 func initOTLP(serviceName string) func() {
 	ctx := context.Background()
 
-	otelAgentAddr, ok := os.LookupEnv("OTEL_AGENT_ENDPOINT")
-	if !ok {
-		otelAgentAddr = "0.0.0.0:4317"
-	}
-
 	exp, err := otlp.NewExporter(ctx, otlpgrpc.NewDriver(
 		otlpgrpc.WithInsecure(),
-		otlpgrpc.WithEndpoint(otelAgentAddr),
-		otlpgrpc.WithDialOption(grpc.WithBlock()), // useful for testing
 	))
 	if err != nil {
 		logrus.WithError(err).Fatal("failed to create exporter")
