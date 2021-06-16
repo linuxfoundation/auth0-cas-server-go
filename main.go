@@ -57,6 +57,9 @@ func main() {
 	// Interstitial page to implement OIDC callback to redirect to CAS service.
 	http.HandleFunc("/cas/oidc_callback", oauth2Callback)
 
+	// Set up middleware.
+	mux := loggingHandler(http.DefaultServeMux)
+
 	// Set up http listener using provided command line parameters.
 	var addr string
 	if *bind == "*" {
@@ -64,11 +67,20 @@ func main() {
 	} else {
 		addr = *bind + ":" + *port
 	}
-	err := http.ListenAndServe(addr, nil)
+	err := http.ListenAndServe(addr, mux)
 	if err != nil {
 		logrus.WithField("err", err).Fatal("http listener error")
 	}
 
+}
+
+// loggingHandler adds a logrus.Entry into the context of the current request.
+func loggingHandler(inner http.Handler) http.Handler {
+	mw := func(w http.ResponseWriter, r *http.Request) {
+		ctx := withLogger(r.Context(), requestLogger(r))
+		inner.ServeHTTP(w, r.WithContext(ctx))
+	}
+	return http.HandlerFunc(mw)
 }
 
 func withLogger(ctx context.Context, logger *logrus.Entry) context.Context {
