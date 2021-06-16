@@ -9,9 +9,16 @@ require (
 	github.com/joho/godotenv v1.3.1-0.20210304093531-ddf83eb33bbb
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/sirupsen/logrus v1.8.1
+	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.20.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.20.0
+	go.opentelemetry.io/otel v0.20.0
+	go.opentelemetry.io/otel/exporters/otlp v0.20.0
+	go.opentelemetry.io/otel/sdk v0.20.1-0.20210427165248-62cd933da58e
+	go.opentelemetry.io/otel/trace v0.20.0
 	golang.org/x/net v0.0.0-20210414194228-064579744ee0 // indirect
 	golang.org/x/oauth2 v0.0.0-20210413134643-5e61552d6c78
 	golang.org/x/sys v0.0.0-20210414055047-fe65e336abe0 // indirect
 	golang.org/x/text v0.3.6
 	google.golang.org/appengine v1.6.7 // indirect
+	google.golang.org/grpc v1.38.0
 )

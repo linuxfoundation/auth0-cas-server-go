@@ -9,12 +9,19 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/semconv"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type contextID int
 
 const (
 	logEntryID contextID = iota
+)
+
+var (
+	httpClient = http.DefaultClient
 )
 
 // main parses optional flags and starts http listener.
@@ -40,6 +47,17 @@ func main() {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
 
+	// Setup Datadog tracing if DD_SERVICE is set.
+	ddService, isDDTrace := os.LookupEnv("DD_SERVICE")
+	if isDDTrace {
+		shutdownOTLP := initOTLP(ddService)
+		defer shutdownOTLP()
+
+		// Instrument http clients.
+		auth0Client.Transport = otelhttp.NewTransport(auth0Client.Transport)
+		httpClient = &http.Client{Transport: otelhttp.NewTransport(nil)}
+	}
+
 	// Support GET/POST monitoring "ping".
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "OK\n")
@@ -60,6 +78,11 @@ func main() {
 	// Set up middleware.
 	mux := loggingHandler(http.DefaultServeMux)
 
+	if isDDTrace {
+		mux = routeTagHandler(mux)
+		mux = otelhttp.NewHandler(mux, "web.request")
+	}
+
 	// Set up http listener using provided command line parameters.
 	var addr string
 	if *bind == "*" {
@@ -71,7 +94,17 @@ func main() {
 	if err != nil {
 		logrus.WithField("err", err).Fatal("http listener error")
 	}
+}
 
+// routeTagHandler sets the OpenTelemetry route to the current path. Based on
+// otelhttp.WithRoute.
+func routeTagHandler(inner http.Handler) http.Handler {
+	mw := func(w http.ResponseWriter, r *http.Request) {
+		span := trace.SpanFromContext(r.Context())
+		span.SetAttributes(semconv.HTTPRouteKey.String(r.URL.Path))
+		inner.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(mw)
 }
 
 // loggingHandler adds a logrus.Entry into the context of the current request.
@@ -122,6 +155,15 @@ func requestLogger(r *http.Request) *logrus.Entry {
 	default:
 		// Log the IP recorded in the configured header.
 		e = e.WithField("client", headerIP)
+	}
+
+	// Add trace and span IDs (if any) for log/trace correlation.
+	span := trace.SpanFromContext(r.Context())
+	if traceID := span.SpanContext().TraceID(); traceID.IsValid() {
+		e = e.WithField("dd.trace_id", convertTraceID(traceID.String()))
+	}
+	if spanID := span.SpanContext().SpanID(); spanID.IsValid() {
+		e = e.WithField("dd.span_id", convertTraceID(spanID.String()))
 	}
 
 	return e

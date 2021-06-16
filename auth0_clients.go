@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
@@ -87,7 +89,8 @@ func getAuth0Clients(ctx context.Context) ([]auth0ClientStub, error) {
 
 	for {
 		uri := fmt.Sprintf("https://%s.auth0.com/api/v2/clients?%s", cfg.Auth0Tenant, v.Encode())
-		req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
+		traceCtx := httptrace.WithClientTrace(ctx, otelhttptrace.NewClientTrace(ctx))
+		req, err := http.NewRequestWithContext(traceCtx, "GET", uri, nil)
 		if err != nil {
 			return nil, err
 		}
