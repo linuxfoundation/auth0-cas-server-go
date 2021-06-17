@@ -231,7 +231,7 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token.SetAuthHeader(req)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		outputFailure(r.Context(), w, r, err, "INTERNAL_ERROR", "error fetching user profile", useJSON)
 		return
