@@ -6,12 +6,11 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 type otelErrorHandler struct{}
@@ -29,9 +28,7 @@ func init() {
 func initOTLP(serviceName string) func() {
 	ctx := context.Background()
 
-	exp, err := otlp.NewExporter(ctx, otlpgrpc.NewDriver(
-		otlpgrpc.WithInsecure(),
-	))
+	exp, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure())
 	if err != nil {
 		logrus.WithError(err).Fatal("failed to create exporter")
 	}
