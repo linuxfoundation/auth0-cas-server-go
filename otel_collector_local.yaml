@@ -15,9 +15,13 @@ exporters:
         go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.server: otelhttp.server
         go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.client: otelhttp.client
 
+  jaeger:
+    endpoint: jaeger-all-in-one:14250
+    insecure: true
+
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [datadog/api]
+      exporters: [datadog/api,jaeger]

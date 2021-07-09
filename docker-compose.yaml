@@ -13,7 +13,7 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.28.0
     volumes:
-      - ./otel_collector_config.yaml:/etc/otel/config.yaml
+      - ./otel_collector_local.yaml:/etc/otel/config.yaml
     ports:
       - "1888:1888"   # pprof extension
       - "8888:8888"   # Prometheus metrics exposed by the collector
@@ -37,5 +37,5 @@ services:
       - DD_API_KEY
       - DD_SERVICE
       - DD_ENV
-      - DD_APM_ENABLE=false
+      - DD_APM_ENABLED=false
       - DD_PROCESS_AGENT_ENABLED=false
