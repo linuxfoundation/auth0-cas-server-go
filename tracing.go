@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
@@ -12,6 +13,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
+
+const defaultServiceName = "auth0-cas-server-go"
 
 type otelErrorHandler struct{}
 
@@ -25,7 +28,7 @@ func init() {
 
 // Initializes an OTLP exporter, and configures the corresponding trace and
 // metric providers. Returns a shutdown function.
-func initOTLP(serviceName string) func() {
+func initOTLP() func() {
 	ctx := context.Background()
 
 	exp, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure())
@@ -33,21 +36,29 @@ func initOTLP(serviceName string) func() {
 		logrus.WithError(err).Fatal("failed to create exporter")
 	}
 
-	res, err := resource.New(ctx,
-		resource.WithAttributes(
-			semconv.ServiceNameKey.String(serviceName),
-		),
-	)
-	if err != nil {
-		logrus.WithError(err).Fatal("failed to create resource")
+	bsp := sdktrace.NewBatchSpanProcessor(exp)
+
+	opts := []sdktrace.TracerProviderOption{
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSpanProcessor(bsp),
 	}
 
-	bsp := sdktrace.NewBatchSpanProcessor(exp)
-	tracerProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithResource(res),
-		sdktrace.WithSpanProcessor(bsp),
-	)
+	// If OTEL_SERVICE_NAME name is set, assume the user is using that and
+	// OTEL_RESOURCE_ATTRIBUTES to define the resource and use autodiscovery.
+	// If it's not set: create the resource manually with a default service name.
+	if _, ok := os.LookupEnv("OTEL_SERVICE_NAME"); !ok {
+		res, err := resource.New(ctx,
+			resource.WithAttributes(
+				semconv.ServiceNameKey.String(defaultServiceName),
+			),
+		)
+		if err != nil {
+			logrus.WithError(err).Fatal("failed to create resource")
+		}
+		opts = append(opts, sdktrace.WithResource(res))
+	}
+
+	tracerProvider := sdktrace.NewTracerProvider(opts...)
 
 	// Set global propagator to tracecontext (the default is no-op).
 	otel.SetTextMapPropagator(propagation.TraceContext{})

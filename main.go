@@ -28,6 +28,7 @@ var (
 func main() {
 	var debug = flag.Bool("d", false, "enable debug logging")
 	var logJSON = flag.Bool("json", false, "force json logging (default to environment detection)")
+	var noTrace = flag.Bool("notrace", false, "disable OTLP tracing output")
 	var port = flag.String("p", "5000", "port")
 	var bind = flag.String("bind", "*", "interface to bind on")
 	flag.Usage = func() {
@@ -47,13 +48,13 @@ func main() {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
 
-	// Setup Datadog tracing if DD_SERVICE is set.
-	ddService, isDDTrace := os.LookupEnv("DD_SERVICE")
-	if isDDTrace {
-		shutdownOTLP := initOTLP(ddService)
+	// Instrument Open Telemetry.
+	if !*noTrace {
+		// Start OTLP forwarder and register the global tracing provider.
+		shutdownOTLP := initOTLP()
 		defer shutdownOTLP()
 
-		// Instrument http clients.
+		// Instrument HTTP clients.
 		auth0Client.Transport = otelhttp.NewTransport(
 			auth0Client.Transport,
 			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
@@ -87,7 +88,8 @@ func main() {
 	// Set up middleware.
 	mux := loggingHandler(http.DefaultServeMux)
 
-	if isDDTrace {
+	// Add middleware to instrument our HTTP server.
+	if !*noTrace {
 		// Per OpenTelemetry spec, http.server_name should be a *configured* (not
 		// determined by incoming request headers) virtual host, otherwise *unset*.
 		vhost := ""

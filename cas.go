@@ -208,7 +208,7 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	appLogger(r.Context()).WithField("auth0_client", casClient).Debug("found client")
 
 	config := oauth2CfgFromAuth0Client(*casClient, r.Host)
-	token, err := config.Exchange(r.Context(), authCode)
+	token, err := config.Exchange(context.WithValue(r.Context(), oauth2.HTTPClient, httpClient), authCode)
 
 	if err != nil {
 		if rErr, ok := err.(*oauth2.RetrieveError); ok {
