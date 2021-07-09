@@ -119,7 +119,8 @@ func main() {
 }
 
 // routeTagHandler sets the OpenTelemetry route to the current path. Based on
-// otelhttp.WithRoute, but implemented as middleware.
+// otelhttp.WithRoute, but implemented as middleware. This is different from
+// instrumenting the request itself, which is done with otelhttp.NewHandler.
 func routeTagHandler(inner http.Handler) http.Handler {
 	mw := func(w http.ResponseWriter, r *http.Request) {
 		span := trace.SpanFromContext(r.Context())
@@ -146,14 +147,14 @@ func withLogger(ctx context.Context, logger *logrus.Entry) context.Context {
 
 func appLogger(ctx context.Context) *logrus.Entry {
 	if ctx == nil {
-		return &logrus.Entry{}
+		return logrus.NewEntry(logrus.StandardLogger())
 	}
 
 	if logger, ok := ctx.Value(logEntryID).(*logrus.Entry); ok {
 		return logger
 	}
 
-	return &logrus.Entry{}
+	return logrus.NewEntry(logrus.StandardLogger())
 }
 
 func requestLogger(r *http.Request) *logrus.Entry {
