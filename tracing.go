@@ -14,8 +14,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-const defaultServiceName = "auth0-cas-server-go"
-
 type otelErrorHandler struct{}
 
 func (h *otelErrorHandler) Handle(err error) {
@@ -49,7 +47,7 @@ func initOTLP() func() {
 	if _, ok := os.LookupEnv("OTEL_SERVICE_NAME"); !ok {
 		res, err := resource.New(ctx,
 			resource.WithAttributes(
-				semconv.ServiceNameKey.String(defaultServiceName),
+				semconv.ServiceNameKey.String(serviceName),
 			),
 		)
 		if err != nil {

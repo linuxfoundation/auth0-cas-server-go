@@ -155,8 +155,8 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 			match, err := doublestar.Match(glob, serviceURL)
 			if err != nil {
 				appLogger(ctx).WithFields(logrus.Fields{
-					"pattern": glob,
-					"err":     err,
+					"pattern":       glob,
+					logrus.ErrorKey: err,
 				}).Warning("unexpected bad cas_service glob in cache")
 				continue
 			}
@@ -204,8 +204,8 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 			match, err := doublestar.Match(glob, serviceURL)
 			if err != nil {
 				appLogger(ctx).WithFields(logrus.Fields{
-					"pattern": glob,
-					"err":     err,
+					"pattern":       glob,
+					logrus.ErrorKey: err,
 				}).Warning("ignoring bad cas_service glob")
 				continue
 			}

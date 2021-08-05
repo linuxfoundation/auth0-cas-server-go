@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
+	"github.com/evalphobia/logrus_fluent"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
@@ -17,7 +19,8 @@ import (
 type contextID int
 
 const (
-	logEntryID contextID = iota
+	logEntryID  contextID = iota
+	serviceName           = "auth0-cas-server-go"
 )
 
 var (
@@ -43,9 +46,45 @@ func main() {
 	}
 
 	_, isElasticBeanstalk := os.LookupEnv("APP_DEPLOY_DIR")
-	_, isECS := os.LookupEnv("ECS_CLUSTER")
-	if isElasticBeanstalk || isECS || *logJSON {
+	_, isECS := os.LookupEnv("ECS_CONTAINER_METADATA_URI_V4")
+	fluentHost, useFluent := os.LookupEnv("FLUENT_HOST")
+	switch {
+	case isElasticBeanstalk || *logJSON:
+		// If running in Elastic Beanstalk, dd-agent should be in place to scrape
+		// logs.
 		logrus.SetFormatter(&logrus.JSONFormatter{})
+	case isECS && !useFluent:
+		// Assume output to CloudWatch logs which has native timestamps. Use
+		// "message" for cleaner integration with log aggregation service.
+		logrus.SetFormatter(&logrus.JSONFormatter{
+			DisableTimestamp: true,
+			FieldMap: logrus.FieldMap{
+				logrus.FieldKeyMsg: "message",
+			},
+		})
+	case useFluent:
+		var fluentPort int64 = 5170
+		if fluentPortEnv, ok := os.LookupEnv("FLUENT_PORT"); ok {
+			var err error
+			fluentPort, err = strconv.ParseInt(fluentPortEnv, 10, 32)
+			if err != nil {
+				logrus.WithField("fluent_port", fluentPortEnv).WithError(err).Fatal("unable to parse FLUENT_PORT")
+			}
+		}
+		hook, err := logrus_fluent.New(fluentHost, int(fluentPort))
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"host":          fluentHost,
+				"port":          fluentPort,
+				logrus.ErrorKey: err,
+			}).Fatal("could not set up fluentd logger")
+		}
+		hook.SetTag(serviceName + ".log")
+
+		// Convert error struct to string.
+		hook.AddFilter(logrus.ErrorKey, logrus_fluent.FilterError)
+
+		logrus.AddHook(hook)
 	}
 
 	// Instrument Open Telemetry.
@@ -114,7 +153,7 @@ func main() {
 	}
 	err := http.ListenAndServe(addr, mux)
 	if err != nil {
-		logrus.WithField("err", err).Fatal("http listener error")
+		logrus.WithError(err).Fatal("http listener error")
 	}
 }
 
