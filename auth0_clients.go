@@ -43,8 +43,9 @@ type auth0ClientStub struct {
 	ClientID                string                `json:"client_id"`
 	ClientSecret            string                `json:"client_secret,omitempty"`
 	Name                    string                `json:"name"`
-	TokenEndpointAuthMethod string                `json:"token_endpoint_auth_method"`
+	AllowedLogoutURLs       []string              `json:"allowed_logout_urls"`
 	JWTConfiguration        auth0ClientJWTCfgStub `json:"jwt_configuration"`
+	TokenEndpointAuthMethod string                `json:"token_endpoint_auth_method"`
 	ClientMetadata          map[string]string     `json:"client_metadata"`
 }
 
@@ -75,7 +76,7 @@ func getAuth0Clients(ctx context.Context) ([]auth0ClientStub, error) {
 	page := 0
 
 	v := &url.Values{}
-	v.Add("fields", "client_id,client_secret,name,token_endpoint_auth_method,jwt_configuration,client_metadata")
+	v.Add("fields", "client_id,client_secret,name,allowed_logout_urls,jwt_configuration,token_endpoint_auth_method,client_metadata")
 	v.Add("include_fields", "true")
 	v.Add("page", strconv.Itoa(page))
 	v.Add("per_page", "100")

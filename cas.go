@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/sessions"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
 
@@ -130,7 +131,22 @@ func casLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	params := r.URL.Query()
+
+	service := params.Get("service")
+	if service == "" {
+		// Also check for a v2 "url" param, but apply the same validation as a v3
+		// "service" param.
+		service = params.Get("url")
+	}
+
 	auth0Logout := fmt.Sprintf("https://%s/v2/logout", cfg.Auth0Domain)
+
+	// Append client and returnTo if authorized.
+	logoutParams := getLogoutParams(r.Context(), service)
+	if logoutParams != nil {
+		auth0Logout = auth0Logout + "?" + logoutParams.Encode()
+	}
 
 	http.Redirect(w, r, auth0Logout, http.StatusFound)
 }
@@ -410,6 +426,43 @@ func oauth2CfgFromAuth0Client(client auth0ClientStub, casHostname string) oauth2
 		RedirectURL: fmt.Sprintf("https://%s/cas/oidc_callback", casHostname),
 		Scopes:      []string{"openid", "profile", "email"},
 	}
+}
+
+func getLogoutParams(ctx context.Context, service string) *url.Values {
+	if service == "" {
+		return nil
+	}
+
+	casClient, err := getAuth0ClientByService(ctx, service)
+	if err != nil {
+		// Warn about the error and continue.
+		appLogger(ctx).WithFields(logrus.Fields{
+			"service":       service,
+			logrus.ErrorKey: err,
+		}).Warn("ignoring unexpected error validating logout redirection")
+		return nil
+	}
+
+	if casClient == nil {
+		// No cas_service configurations matched the requested logout redirect.
+		appLogger(ctx).WithField("service", service).Warn("ignoring unauthorized logout redirection")
+		return nil
+	}
+
+	// There is a match against cas_service, now we also have to see if it's in
+	// allowed_logout_urls for the client.
+	for _, uri := range casClient.AllowedLogoutURLs {
+		if strings.TrimSuffix(uri, "/") == strings.TrimSuffix(service, "/") {
+			v := &url.Values{}
+			v.Add("client_id", casClient.ClientID)
+			v.Add("returnTo", service)
+			return v
+		}
+	}
+
+	appLogger(ctx).WithField("service", service).Warn("returnTo not allowed by allowed_logout_urls")
+
+	return nil
 }
 
 // outputFailure handles a common case of reporting a problem to the
