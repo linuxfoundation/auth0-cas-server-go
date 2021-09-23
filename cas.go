@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/gorilla/sessions"
@@ -428,16 +429,26 @@ func oauth2CfgFromAuth0Client(client auth0ClientStub, casHostname string) oauth2
 	}
 }
 
-func getLogoutParams(ctx context.Context, service string) *url.Values {
-	if service == "" {
+func getLogoutParams(ctx context.Context, returnTo string) *url.Values {
+	if returnTo == "" {
 		return nil
 	}
 
-	casClient, err := getAuth0ClientByService(ctx, service)
+	returnURL, err := url.Parse(returnTo)
 	if err != nil {
 		// Warn about the error and continue.
 		appLogger(ctx).WithFields(logrus.Fields{
-			"service":       service,
+			"returnTo":      returnTo,
+			logrus.ErrorKey: err,
+		}).Warn("ignoring invalid returnTo URL")
+		return nil
+	}
+
+	casClient, err := getAuth0ClientByService(ctx, returnTo)
+	if err != nil {
+		// Warn about the error and continue.
+		appLogger(ctx).WithFields(logrus.Fields{
+			"returnTo":      returnTo,
 			logrus.ErrorKey: err,
 		}).Warn("ignoring unexpected error validating logout redirection")
 		return nil
@@ -445,23 +456,32 @@ func getLogoutParams(ctx context.Context, service string) *url.Values {
 
 	if casClient == nil {
 		// No cas_service configurations matched the requested logout redirect.
-		appLogger(ctx).WithField("service", service).Warn("ignoring unauthorized logout redirection")
+		appLogger(ctx).WithField("returnTo", returnTo).Warn("ignoring unauthorized logout redirection")
 		return nil
 	}
 
 	// There is a match against cas_service, now we also have to see if it's in
 	// allowed_logout_urls for the client.
-	for _, uri := range casClient.AllowedLogoutURLs {
-		if strings.TrimSuffix(uri, "/") == strings.TrimSuffix(service, "/") {
+	returnURL.RawQuery = ""
+	returnNoQueryOrTrailingSlash := strings.TrimSuffix(returnURL.String(), "/")
+	for _, allowedLogoutValue := range casClient.AllowedLogoutURLs {
+		allowedLogoutURL, err := url.Parse(allowedLogoutValue)
+		if err != nil {
+			appLogger(ctx).WithField("allowed_logout_url", allowedLogoutValue).Warn("unable to parse allowed_logout_urls value")
+			continue
+		}
+		allowedLogoutURL.RawQuery = ""
+		allowedLogoutNoQueryOrTrailingSlash := strings.TrimSuffix(allowedLogoutURL.String(), "/")
+		if matched, _ := filepath.Match(allowedLogoutNoQueryOrTrailingSlash, returnNoQueryOrTrailingSlash); matched {
 			v := &url.Values{}
 			v.Add("client_id", casClient.ClientID)
-			v.Add("returnTo", service)
+			v.Add("returnTo", returnTo)
 			return v
 		}
 	}
 
 	appLogger(ctx).WithFields(logrus.Fields{
-		"returnTo":  service,
+		"returnTo":  returnTo,
 		"client_id": casClient.ClientID,
 	}).Warn("returnTo not allowed by allowed_logout_urls")
 
