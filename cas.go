@@ -460,7 +460,10 @@ func getLogoutParams(ctx context.Context, service string) *url.Values {
 		}
 	}
 
-	appLogger(ctx).WithField("service", service).Warn("returnTo not allowed by allowed_logout_urls")
+	appLogger(ctx).WithFields(logrus.Fields{
+		"returnTo":  service,
+		"client_id": casClient.ClientID,
+	}).Warn("returnTo not allowed by allowed_logout_urls")
 
 	return nil
 }
