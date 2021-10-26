@@ -201,7 +201,7 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !strings.HasPrefix(ticket, "ST-") {
-		outputFailure(r.Context(), w, r, nil, "INVALID_TICKET_SPEC", "invalid ticket", useJSON)
+		outputFailure(r.Context(), w, r, nil, "INVALID_TICKET_SPEC", "invalid ticket spec", useJSON)
 		return
 	}
 
