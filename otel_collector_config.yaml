@@ -1,3 +1,4 @@
+---
 receivers:
   otlp:
     protocols:
@@ -12,6 +13,7 @@ exporters:
     traces:
       ignore_resources: ["GET /ping"]
       span_name_remappings:
+        # yamllint disable rule:line-length
         go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.server: otelhttp.server
         go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.client: otelhttp.client
         go.opentelemetry.io_contrib_instrumentation_github.com_bradfitz_gomemcache_memcache_otelmemcache.client: otelmemcache.client

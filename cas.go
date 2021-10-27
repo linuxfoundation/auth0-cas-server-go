@@ -225,6 +225,11 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	appLogger(r.Context()).WithField("auth0_client", casClient).Debug("found client")
 
 	config := oauth2CfgFromAuth0Client(*casClient, r.Host)
+	appLogger(r.Context()).WithFields(logrus.Fields{
+		"client_id": config.ClientID,
+		"token_url": config.Endpoint.TokenURL,
+		"code":      authCode,
+	}).Debug("auth code exchange")
 	token, err := config.Exchange(context.WithValue(r.Context(), oauth2.HTTPClient, httpClient), authCode)
 
 	if err != nil {
@@ -232,6 +237,7 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 			if rErr.Response.StatusCode == 403 {
 				// Rather than decoding the JSON payload, we can assume a 403 means the
 				// auth code (as provided as a CAS service ticket) was invalid.
+				appLogger(r.Context()).WithError(err).Debug("auth code exchange 403 response")
 				outputFailure(r.Context(), w, r, nil, "INVALID_TICKET", "invalid ticket", useJSON)
 				return
 			}
