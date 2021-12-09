@@ -1,7 +1,9 @@
-FROM golang:1.16-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.16-alpine AS builder
 
-# Set necessary environmet variables needed for our image
-ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+# Set necessary environment variables needed for our image. Allow building to
+# other architectures via cross-compliation build-arg.
+ARG GOARCH=$BUILDARCH
+ENV CGO_ENABLED=0 GOOS=linux
 
 # Move to working directory /build
 WORKDIR /build
