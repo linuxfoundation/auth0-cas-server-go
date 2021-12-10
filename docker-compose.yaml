@@ -12,7 +12,7 @@ services:
 
   # Collector
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.28.0
+    image: otel/opentelemetry-collector-contrib:0.40.0
     volumes:
       - ./otel_collector_local.yaml:/etc/otel/config.yaml
     ports:
@@ -31,7 +31,7 @@ services:
 
   # Datadog Agent
   dd-agent:
-    image: datadog/agent:latest
+    image: datadog/agent:7.29.1
     ports:
       - "8126:8126"
     environment:

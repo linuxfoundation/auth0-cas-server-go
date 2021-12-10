@@ -14,3 +14,7 @@ bin/auth0-cas-server-go: *.go go.mod go.sum
 # Build and label a local Docker container of auth0-cas-server-go.
 docker-build:
 	docker build -t $(IMAGE_NAME):$(GIT_HASH) .
+
+# Docker build with cross-compilation to linux/arm64 platform.
+docker-build-arm64:
+	docker build --platform=linux/arm64 -t $(IMAGE_NAME):$(GIT_HASH)-linux-arm64 .
