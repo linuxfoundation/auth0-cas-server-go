@@ -3,11 +3,17 @@ receivers:
   otlp:
     protocols:
       grpc:
-
 processors:
+  memory_limiter:
+    limit_mib: 250
+    check_interval: 5s
+  resourcedetection:
+    detectors: [ecs]
   batch:
     timeout: 10s
-
+extensions:
+  memory_ballast:
+    size_mib: 64
 exporters:
   datadog/api:
     traces:
@@ -17,10 +23,9 @@ exporters:
         go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.server: otelhttp.server
         go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.client: otelhttp.client
         go.opentelemetry.io_contrib_instrumentation_github.com_bradfitz_gomemcache_memcache_otelmemcache.client: otelmemcache.client
-
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
+      processors: [memory_limiter, resourcedetection, batch]
       exporters: [datadog/api]

@@ -35,8 +35,6 @@ VOLUME ["/etc/otel"]
 COPY --from=builder /etc/passwd /etc/group /etc/
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy otel-collector config so we can share with otel-collector ECS container
-# using a bind mount.
 COPY otel_collector_config.yaml /etc/otel/config.yaml
 
 COPY --from=builder /go/bin/auth0-cas-server-go /auth0-cas-server-go
