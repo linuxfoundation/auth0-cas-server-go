@@ -24,6 +24,7 @@ exporters:
         go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.client: otelhttp.client
         go.opentelemetry.io_contrib_instrumentation_github.com_bradfitz_gomemcache_memcache_otelmemcache.client: otelmemcache.client
 service:
+  extensions: [memory_ballast]
   pipelines:
     traces:
       receivers: [otlp]
