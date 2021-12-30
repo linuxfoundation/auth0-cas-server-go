@@ -4,11 +4,15 @@ go 1.16
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.0.2
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
+	github.com/evalphobia/logrus_fluent v0.5.4
+	github.com/fluent/fluent-logger-golang v1.6.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gorilla/sessions v1.2.1
 	github.com/joho/godotenv v1.4.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/sirupsen/logrus v1.8.1
+	github.com/tinylib/msgp v1.1.6 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.28.0
 	go.opentelemetry.io/otel v1.3.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.3.0
