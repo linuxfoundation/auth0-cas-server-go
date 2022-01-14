@@ -40,3 +40,10 @@ services:
       - DD_ENV
       - DD_APM_ENABLED=false
       - DD_PROCESS_AGENT_ENABLED=false
+
+  # Fluentbit (to stdout) agent for testing Fluent logging
+  fluentbit:
+    image: fluent/fluent-bit:1.8
+    ports:
+      - "24224:24224"
+    command: "/fluent-bit/bin/fluent-bit -i forward -o stdout"

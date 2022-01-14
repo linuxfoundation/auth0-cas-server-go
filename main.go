@@ -30,7 +30,7 @@ var (
 // main parses optional flags and starts http listener.
 func main() {
 	var debug = flag.Bool("d", false, "enable debug logging")
-	var logJSON = flag.Bool("json", false, "force json logging (default to environment detection)")
+	var logJSON = flag.Bool("json", false, "force json logging to console (default: autodetect enviroment)")
 	var noTrace = flag.Bool("notrace", false, "disable OTLP tracing output")
 	var port = flag.String("p", "5000", "port")
 	var bind = flag.String("bind", "*", "interface to bind on")
@@ -45,15 +45,9 @@ func main() {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	_, isElasticBeanstalk := os.LookupEnv("APP_DEPLOY_DIR")
 	_, isECS := os.LookupEnv("ECS_CONTAINER_METADATA_URI_V4")
-	fluentHost, useFluent := os.LookupEnv("FLUENT_HOST")
 	switch {
-	case isElasticBeanstalk || *logJSON:
-		// If running in Elastic Beanstalk, dd-agent should be in place to scrape
-		// logs.
-		logrus.SetFormatter(&logrus.JSONFormatter{})
-	case isECS && !useFluent:
+	case isECS:
 		// Assume output to CloudWatch logs which has native timestamps. Use
 		// "message" for cleaner integration with log aggregation service.
 		logrus.SetFormatter(&logrus.JSONFormatter{
@@ -62,8 +56,12 @@ func main() {
 				logrus.FieldKeyMsg: "message",
 			},
 		})
-	case useFluent:
-		var fluentPort int64 = 5170
+	case *logJSON:
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+	}
+
+	if fluentHost, useFluent := os.LookupEnv("FLUENT_HOST"); useFluent {
+		var fluentPort int64 = 24224
 		if fluentPortEnv, ok := os.LookupEnv("FLUENT_PORT"); ok {
 			var err error
 			fluentPort, err = strconv.ParseInt(fluentPortEnv, 10, 32)
@@ -71,7 +69,11 @@ func main() {
 				logrus.WithField("fluent_port", fluentPortEnv).WithError(err).Fatal("unable to parse FLUENT_PORT")
 			}
 		}
-		hook, err := logrus_fluent.New(fluentHost, int(fluentPort))
+		hook, err := logrus_fluent.NewWithConfig(logrus_fluent.Config{
+			Host:         fluentHost,
+			Port:         int(fluentPort),
+			AsyncConnect: true,
+		})
 		if err != nil {
 			logrus.WithFields(logrus.Fields{
 				"host":          fluentHost,

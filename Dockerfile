@@ -35,10 +35,10 @@ VOLUME ["/etc/otel"]
 COPY --from=builder /etc/passwd /etc/group /etc/
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
+COPY --from=builder /go/bin/otelcontribcol /otelcontribcol
 COPY otel_collector_config.yaml /etc/otel/config.yaml
 
 COPY --from=builder /go/bin/auth0-cas-server-go /auth0-cas-server-go
-COPY --from=builder /go/bin/otelcontribcol /otelcontribcol
 
 USER appuser:appgroup
 
