@@ -1,6 +1,6 @@
 module gitlab.com/linuxfoundation/auth0/auth0-cas-server-go
 
-go 1.16
+go 1.19
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.0.2

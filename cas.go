@@ -26,7 +26,7 @@ type userAttributes struct {
 	FamilyName string   `json:"family_name,omitempty"`
 	GivenName  string   `json:"given_name,omitempty"`
 	Zoneinfo   string   `json:"zoneinfo,omitempty"`
-	Groups     []string `json:"https://sso.linuxfoundation.org/claims/groups",omitempty`
+	Groups     []string `json:"https://sso.linuxfoundation.org/claims/groups,omitempty"`
 }
 
 func init() {
