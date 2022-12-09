@@ -1,20 +1,41 @@
 ---
 version: "2"
 services:
+  # Auth0 CAS server.
+  auth0-cas-server-go:
+    image: linuxfoundation/auth0-cas-server-go:latest
+    pull_policy: never
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - AUTH0_TENANT
+      - AUTH0_DOMAIN
+      - CLIENT_ID
+      - CLIENT_SECRET
+      - COOKIE_SECRET
+      - INSECURE_COOKIE
+    depends_on:
+      - otel-collector
 
   # Jaeger
   jaeger-all-in-one:
-    image: jaegertracing/all-in-one:1.22
+    image: docker.io/jaegertracing/all-in-one:1.22
     ports:
       - "16686:16686"
       - "14268"
       - "14250"
 
-  # Collector
+  # Use OTEL Collector locally, instead of DD Agent, to route to both DD and
+  # Jaeger. We don't use OTEL Collector in ECS deployment, because configuring
+  # it with environmental variables is a pain, and mounting a config file in
+  # ECS is non-trivial as well.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.40.0
+    image: docker.io/otel/opentelemetry-collector-contrib:0.66.0
     volumes:
       - ./otel_collector_local.yaml:/etc/otel/config.yaml
+    command: ["--config=/etc/otel/config.yaml"]
     ports:
       - "1888:1888"    # pprof extension
       - "8888:8888"    # Prometheus metrics exposed by the collector
@@ -24,26 +45,13 @@ services:
       - "55670:55679"  # zpages extension
     environment:
       - DD_API_KEY
-      - DD_SERVICE
       - DD_ENV
     depends_on:
       - jaeger-all-in-one
 
-  # Datadog Agent
-  dd-agent:
-    image: datadog/agent:7.29.1
-    ports:
-      - "8126:8126"
-    environment:
-      - DD_API_KEY
-      - DD_SERVICE
-      - DD_ENV
-      - DD_APM_ENABLED=false
-      - DD_PROCESS_AGENT_ENABLED=false
-
   # Fluentbit (to stdout) agent for testing Fluent logging
   fluentbit:
-    image: fluent/fluent-bit:1.8
+    image: docker.io/fluent/fluent-bit:1.8
     ports:
       - "24224:24224"
     command: "/fluent-bit/bin/fluent-bit -i forward -o stdout"

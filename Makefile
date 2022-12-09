@@ -1,6 +1,6 @@
 # Clone this repo outside $GOPATH (go mod)
 
-.PHONY: docker-build
+.PHONY: docker-build ko-build-local
 
 IMAGE_NAME ?= linuxfoundation/auth0-cas-server-go
 
@@ -13,8 +13,7 @@ bin/auth0-cas-server-go: *.go go.mod go.sum
 
 # Build and label a local Docker container of auth0-cas-server-go.
 docker-build:
-	docker build -t $(IMAGE_NAME):$(GIT_HASH) .
+	docker build -t $(IMAGE_NAME):$(GIT_HASH) -t $(IMAGE_NAME):latest .
 
-# Docker build with cross-compilation to linux/arm64 platform.
-docker-build-arm64:
-	docker build --platform=linux/arm64 -t $(IMAGE_NAME):$(GIT_HASH)-linux-arm64 .
+ko-build-local: bin/auth0-cas-server-go
+	ko build --local --tags $(GIT_HASH),latest --platform linux/amd64,linux/arm64 gitlab.com/linuxfoundation/auth0/auth0-cas-server-go

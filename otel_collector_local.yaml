@@ -1,27 +1,72 @@
 ---
 receivers:
+  # OTLP will receive traces from our application.
   otlp:
     protocols:
       grpc:
+  # The hostmetrics receiver is required to get correct infrastructure metrics
+  # in Datadog.
+  hostmetrics:
+    collection_interval: 10s
+    scrapers:
+      paging:
+        metrics:
+          system.paging.utilization:
+            enabled: true
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      disk:
+      filesystem:
+        metrics:
+          system.filesystem.utilization:
+            enabled: true
+      load:
+      memory:
+      network:
+      processes:
+  # The prometheus receiver scrapes metrics needed for the OpenTelemetry
+  # Collector Dashboard.
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otelcol'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['0.0.0.0:8888']
+
 processors:
+  # Datadog APM Intake limit is 3.2MB. Let's make sure the batches do not
+  # go over that.
   batch:
+    send_batch_max_size: 1000
+    send_batch_size: 100
     timeout: 10s
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: ${DD_ENV}
+        action: upsert
+
 exporters:
-  datadog/api:
+  datadog:
+    api:
+      key: ${DD_API_KEY}
     traces:
       ignore_resources: ["GET /ping"]
-      span_name_remappings:
-        # yamllint disable rule:line-length
-        go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.server: otelhttp.server
-        go.opentelemetry.io_contrib_instrumentation_net_http_otelhttp.client: otelhttp.client
-        go.opentelemetry.io_contrib_instrumentation_github.com_bradfitz_gomemcache_memcache_otelmemcache.client: otelmemcache.client
   jaeger:
     endpoint: jaeger-all-in-one:14250
     tls:
       insecure: true
+
 service:
   pipelines:
+    metrics:
+      receivers: [hostmetrics, prometheus]
+      processors: [resource, batch]
+      exporters: [datadog]
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [datadog/api, jaeger]
+      processors: [resource, batch]
+      exporters: [datadog, jaeger]
