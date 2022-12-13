@@ -10,18 +10,21 @@ services:
       - "8080:8080"
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      # Set required environmental variables in a .env file.
       - AUTH0_TENANT
       - AUTH0_DOMAIN
       - CLIENT_ID
       - CLIENT_SECRET
       - COOKIE_SECRET
       - INSECURE_COOKIE
+      - REMOTE_IP_HEADER
+      - DEBUG
     depends_on:
       - otel-collector
 
   # Jaeger
   jaeger-all-in-one:
-    image: docker.io/jaegertracing/all-in-one:1.22
+    image: docker.io/jaegertracing/all-in-one:1.28
     ports:
       - "16686:16686"
       - "14268"
