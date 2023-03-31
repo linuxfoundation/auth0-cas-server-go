@@ -97,9 +97,15 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 
 	session, _ := store.Get(r, "cas-shim")
 	session.Values[state] = service
-	// XXX: the cookie can get too big if the user tries 10+ logins in the day
-	// without returning from any of them.
 	err = session.Save(r, w)
+	if err != nil && err.Error() == "securecookie: the value is too long" {
+		// The cookie can get too big if the user tries 10+ logins in the day
+		// without returning from any of them.
+		appLogger(r.Context()).Warning("cookie too large (bot or other bad client)")
+		w.Header().Set("Retry-After", "86400")
+		http.Error(w, "429 too many requests", http.StatusTooManyRequests)
+		return
+	}
 	if err != nil {
 		appLogger(r.Context()).WithError(err).Error("error saving session")
 		http.Error(w, "500 internal server error", http.StatusInternalServerError)
