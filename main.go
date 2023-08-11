@@ -226,11 +226,14 @@ func requestLogger(r *http.Request) *logrus.Entry {
 	// Add trace and span IDs (if any) for log/trace correlation.
 	spanContext := trace.SpanContextFromContext(r.Context())
 	if traceID := spanContext.TraceID(); traceID.IsValid() {
+		e = e.WithField("trace_id", traceID.String())
 		e = e.WithField("dd.trace_id", convertTraceID(traceID.String()))
 	}
 	if spanID := spanContext.SpanID(); spanID.IsValid() {
+		e = e.WithField("span_id", spanID.String())
 		e = e.WithField("dd.span_id", convertTraceID(spanID.String()))
 	}
+	e = e.WithField("trace_flags", spanContext.TraceFlags().String())
 
 	return e
 }
