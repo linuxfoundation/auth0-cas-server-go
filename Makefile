@@ -16,4 +16,4 @@ docker-build:
 	docker build -t $(IMAGE_NAME):$(GIT_HASH) -t $(IMAGE_NAME):latest .
 
 ko-build-local: bin/auth0-cas-server-go
-	ko build --local --tags $(GIT_HASH),latest --platform linux/amd64,linux/arm64 gitlab.com/linuxfoundation/auth0/auth0-cas-server-go
+	ko build --local --tags $(GIT_HASH),latest --platform linux/amd64,linux/arm64 --sbom-dir sbom gitlab.com/linuxfoundation/auth0/auth0-cas-server-go
