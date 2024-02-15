@@ -370,6 +370,13 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 
 	errParam := params.Get("error")
 	errDescription := params.Get("error_description")
+	if errParam == "access_denied" {
+		// Consider this a warning-level error for logging purposes.
+		err := fmt.Errorf("%s: %s", errParam, errDescription)
+		appLogger(r.Context()).WithError(err).Warning("login aborted")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if errParam != "" {
 		err := fmt.Errorf("%s: %s", errParam, errDescription)
 		appLogger(r.Context()).WithError(err).Error("login error")
