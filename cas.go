@@ -1,3 +1,6 @@
+// Copyright The Linux Foundation and its contributors.
+// SPDX-License-Identifier: MIT
+
 package main
 
 import (

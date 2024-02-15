@@ -1,3 +1,5 @@
+# Copyright The Linux Foundation and its contributors.
+# SPDX-License-Identifier: MIT
 ---
 receivers:
   # OTLP will receive traces from our application.

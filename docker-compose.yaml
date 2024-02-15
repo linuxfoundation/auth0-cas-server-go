@@ -1,3 +1,5 @@
+# Copyright The Linux Foundation and its contributors.
+# SPDX-License-Identifier: MIT
 ---
 version: "2"
 services:

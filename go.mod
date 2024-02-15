@@ -1,4 +1,7 @@
-module gitlab.com/linuxfoundation/auth0/auth0-cas-server-go
+// Copyright The Linux Foundation and its contributors.
+// SPDX-License-Identifier: MIT
+
+module github.com/linuxfoundation/auth0-cas-server-go
 
 go 1.19
 

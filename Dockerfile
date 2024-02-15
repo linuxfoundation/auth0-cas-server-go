@@ -19,7 +19,7 @@ RUN go mod download
 COPY . .
 
 # Build the packages
-RUN go build -o /go/bin/auth0-cas-server-go -trimpath -ldflags="-w -s" gitlab.com/linuxfoundation/auth0/auth0-cas-server-go
+RUN go build -o /go/bin/auth0-cas-server-go -trimpath -ldflags="-w -s" github.com/linuxfoundation/auth0-cas-server-go
 
 # Run our go binary standalone
 FROM scratch
