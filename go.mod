@@ -3,7 +3,7 @@
 
 module github.com/linuxfoundation/auth0-cas-server-go
 
-go 1.19
+go 1.20
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.4.0

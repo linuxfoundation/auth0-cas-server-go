@@ -1,3 +1,6 @@
+# Copyright The Linux Foundation and its contributors.
+# SPDX-License-Identifier: MIT
+
 FROM --platform=$BUILDPLATFORM golang:1.19-alpine AS builder
 
 # Set necessary environment variables needed for our image. Allow building to

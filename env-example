@@ -1,0 +1,25 @@
+# Specify the "tenant" part of your Auth0 domain: {tenant}.auth0.com.
+AUTH0_TENANT=
+# Optionally, if your tenant has a custom domain configured, specify it here.
+#AUTH0_DOMAIN=example.auth0.com
+# The client ID and client secret of the application that you created in the
+# Auth0 dashboard for this service to connect as. It must be granted the scopes
+# "read:clients" and "read:client_keys" against the Auth0 v2 Management API.
+CLIENT_ID=
+CLIENT_SECRET=
+
+# Specify a random string to be used as the cookie secret. This allows the
+# service to securely store state in the client browser.
+COOKIE_SECRET=
+
+# For development reasons, if your service is not served over HTTPS, you must
+# enable insecure cookies.
+#INSECURE_COOKIE=1
+
+# Optional header to pull verified client IP from for logging (simple value only; no parsing of
+# X-Forwarded-For is supported.)
+#REMOTE_IP_HEADER=HTTP_X_FORWARDED_FOR
+
+# DD_ENV can be used with docker-compose to set the environment for the Docker
+# exporter of OpenTelemetry Collector.
+#DD_ENV=local
