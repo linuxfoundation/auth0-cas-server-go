@@ -1,0 +1,10 @@
+---
+extends: default
+ignore: |
+  .git
+  bin
+  sbom
+rules:
+  line-length:
+    max: 120
+    level: warning
