@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -91,7 +91,7 @@ func getAuth0Clients(ctx context.Context) ([]auth0ClientStub, error) {
 
 	for {
 		uri := fmt.Sprintf("https://%s.auth0.com/api/v2/clients?%s", cfg.Auth0Tenant, v.Encode())
-		req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +101,7 @@ func getAuth0Clients(ctx context.Context) ([]auth0ClientStub, error) {
 		}
 		defer resp.Body.Close()
 
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +156,8 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 	// Compare against cached globs.
 	if item, exists := auth0Cache.Get("cas-service-globs"); exists {
 		for glob, client := range item.(map[string]auth0ClientStub) {
-			match, err := doublestar.Match(glob, serviceURL)
+			var match bool
+			match, err = doublestar.Match(glob, serviceURL)
 			if err != nil {
 				appLogger(ctx).WithFields(logrus.Fields{
 					"pattern":       glob,

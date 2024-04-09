@@ -20,7 +20,6 @@ type casValidationResponse struct {
 type casServiceResponse struct {
 	// I'm not able to get xmlnas:cas to show up using native namespace in
 	// XMLName, so we're using a workaround of setting a XMLNS attribute.
-	//XMLName xml.Name `json:"-" xml:"http://www.yale.edu/tp/cas cas:serviceResponse"
 	XMLName xml.Name `json:"-" xml:"cas:serviceResponse"`
 	XMLNS   string   `json:"-" xml:"xmlns:cas,attr"`
 

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/evalphobia/logrus_fluent"
 	"github.com/sirupsen/logrus"
@@ -113,7 +114,7 @@ func main() {
 	}
 
 	// Support GET/POST monitoring "ping".
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/ping", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintf(w, "OK\n")
 	})
 
@@ -156,7 +157,12 @@ func main() {
 	} else {
 		addr = *bind + ":" + *port
 	}
-	err := http.ListenAndServe(addr, mux)
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	err := server.ListenAndServe()
 	if err != nil {
 		logrus.WithError(err).Fatal("http listener error")
 	}
