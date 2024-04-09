@@ -1,7 +1,7 @@
 # Copyright The Linux Foundation and its contributors.
 # SPDX-License-Identifier: MIT
 
-FROM --platform=$BUILDPLATFORM cgr.dev/chainguard/go AS builder
+FROM --platform=$BUILDPLATFORM cgr.dev/chainguard/go:latest AS builder
 
 # Set necessary environment variables needed for our image. Allow building to
 # other architectures via cross-compliation build-arg.
