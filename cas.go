@@ -1,6 +1,7 @@
 // Copyright The Linux Foundation and its contributors.
 // SPDX-License-Identifier: MIT
 
+// The auth0-cas-service-go service.
 package main
 
 import (
@@ -233,6 +234,22 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 
 	appLogger(r.Context()).WithField("auth0_client", casClient).Debug("found client")
 
+	// Construct an OAuth2 config that lets us complete the authorization code
+	// handshake to to get an access token.
+	//
+	// TODO: Currently, this service uses the access_token retrieved at this
+	// point to make a request to the OIDC userinfo endpoint to get the user's
+	// profile. HOWEVER, we might consider instead capturing the id_token
+	// returned from the token URL. If we do this, we also would then validate
+	// the id_token DIFFERENTLY based on whether the client was configured with
+	// HS256 or RS256 token signing (similar to how we read the
+	// token_endpoint_auth_method from the Auth0 client configuration). Since
+	// RSA/JWKS type validation is more complex, we might only do id_token
+	// parsing for HS256-configured clients, and fall back to the simpler
+	// userinfo endpoint for RS256-configured clients. This gives us the
+	// capability to skip the userinfo endpoint for performance gains (provided
+	// the client is configured for it), without significantly increasing the
+	// complexity of the codebase.
 	config := oauth2CfgFromAuth0Client(*casClient, r.Host)
 	appLogger(r.Context()).WithFields(logrus.Fields{
 		"client_id": config.ClientID,

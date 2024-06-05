@@ -1,6 +1,9 @@
 # Copyright The Linux Foundation and its contributors.
 # SPDX-License-Identifier: MIT
 
+# checkov:skip=CKV_DOCKER_7:No free access to Chainguard versioned labels.
+# hadolint global ignore=DL3007
+
 FROM --platform=$BUILDPLATFORM cgr.dev/chainguard/go:latest AS builder
 
 # Set necessary environment variables needed for our image. Allow building to
@@ -23,6 +26,9 @@ RUN go build -o /go/bin/auth0-cas-server-go -trimpath -ldflags="-w -s" github.co
 
 # Run our go binary standalone
 FROM cgr.dev/chainguard/static:latest
+
+# Implicit with base image: setting explicitly for linters.
+USER nonroot
 
 EXPOSE 8080
 
