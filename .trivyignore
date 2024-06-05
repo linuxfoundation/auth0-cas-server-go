@@ -1,0 +1,6 @@
+# No free access to Chainguard versioned labels.
+AVD-DS-0001
+
+# Allow no health check: Docker-built container is for local development only
+# (ko-build is used for build artifact).
+AVD-DS-0026

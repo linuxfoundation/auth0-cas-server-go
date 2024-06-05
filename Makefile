@@ -12,6 +12,15 @@ bin/auth0-cas-server-go: *.go go.mod go.sum
 	@mkdir -p bin
 	go build -o bin/auth0-cas-server-go github.com/linuxfoundation/auth0-cas-server-go
 
+all: bin/auth0-cas-server-go docker-build
+
+lint:
+	docker pull --platform linux/amd64 oxsecurity/megalinter-go:v7
+	docker run --rm --platform linux/amd64 -v '$(CURDIR):/tmp/lint:rw' oxsecurity/megalinter-go:v7
+
+test:
+	@echo "No tests to run ... would you like to 'make lint'?"
+
 # Build and label a local Docker container of auth0-cas-server-go.
 docker-build:
 	docker build -t $(IMAGE_NAME):$(GIT_HASH) -t $(IMAGE_NAME):latest .

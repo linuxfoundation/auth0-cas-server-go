@@ -1,6 +1,7 @@
 // Copyright The Linux Foundation and its contributors.
 // SPDX-License-Identifier: MIT
 
+// The auth0-cas-service-go service.
 package main
 
 import (

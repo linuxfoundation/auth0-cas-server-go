@@ -2,5 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 .env
-bin/
-sbom/
+go.work
+/bin/
+/sbom/
+
+/megalinter-reports/

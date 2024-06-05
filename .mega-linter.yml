@@ -1,0 +1,17 @@
+# Copyright The Linux Foundation and each contributor to LFX.
+# SPDX-License-Identifier: MIT
+---
+DISABLE_LINTERS:
+  # Revive covers this, plus golangci-lint has trouble with newer go toolchains
+  # in go.mod.
+  - GO_GOLANGCI_LINT
+  # cspell is laughably bad at code/comments/etc.
+  - SPELL_CSPELL
+  # Link checking more likely to cause false positives than be useful for us.
+  - SPELL_LYCHEE
+  # yamllint is sufficient for us.
+  - YAML_PRETTIER
+DISABLE_ERRORS_LINTERS:
+  # These are informative but don't need to break the build.
+  - COPYPASTE_JSCPD
+GITHUB_COMMENT_REPORTER: false
