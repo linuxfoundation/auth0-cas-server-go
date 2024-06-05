@@ -1,3 +1,5 @@
+# Copyright The Linux Foundation and each contributor to LFX.
+# SPDX-License-Identifier: MIT
 ---
 DISABLE_LINTERS:
   # Revive covers this, plus golangci-lint has trouble with newer go toolchains
