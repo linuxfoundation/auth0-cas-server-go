@@ -21,10 +21,10 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v8
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - uses: ko-build/setup-ko@v0.6
+      - uses: ko-build/setup-ko@v0.8
       - run: |
           ko build . \
             --bare \
