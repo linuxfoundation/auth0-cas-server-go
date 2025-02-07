@@ -33,5 +33,7 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh \
             | sh -s -- -b /usr/local/bin
-      - run: |
-          trufflehog --github-actions filesystem "${RUNNER_TEMP}/image.tar"
+      - name: Run trufflehog on image.tar
+        run: |
+          trufflehog --fail --no-update --github-actions \
+            filesystem "${RUNNER_TEMP}/image.tar"
