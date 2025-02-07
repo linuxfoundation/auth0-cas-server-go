@@ -1,0 +1,37 @@
+---
+# Copyright The Linux Foundation and each contributor to LFX.
+# SPDX-License-Identifier: MIT
+
+name: Image Scan
+
+"on":
+  pull_request: null
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Image Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: ko-build/setup-ko@v0.8
+      - run: |
+          ko build . --push=false --tarball ${RUNNER_TEMP}/image.tar \
+            --bare \
+            --platform linux/arm64 \
+            --sbom spdx
+      - name: Install trufflehog via shell pipe
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh \
+            | sh -s -- -b /usr/local/bin
+      - run: |
+          trufflehog --github-actions filesystem ${RUNNER_TEMP}/image.tar

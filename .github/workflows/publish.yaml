@@ -21,9 +21,13 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v8
         with:
-          go-version: '1.22.x'
+          go-version-file: go.mod
       - uses: ko-build/setup-ko@v0.6
       - run: |
-          ko build --bare --platform linux/amd64,linux/arm64 -t latest -t ${{ github.sha }} --sbom spdx .
+          ko build . \
+            --bare \
+            --platform linux/amd64,linux/arm64 \
+            -t latest -t ${{ github.sha }} \
+            --sbom spdx
