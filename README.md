@@ -2,8 +2,8 @@
 
 ## Overview
 
-This service was inspired by Auth0, through their example at
-[auth0-samples/auth0-cas-server](https://github.com/auth0-samples/auth0-cas-server).
+This service was inspired by Auth0, through their `auth0-cas-server` service
+formerly hosted at `github.com/auth0-samples/auth0-cas-server` (link now dead).
 It is a simple authentication redirector which wraps an OpenID Connect
 authentication flow to expose it as server implementing the Central
 Authentication Service (CAS) SSO protocol. The service leverages configuration

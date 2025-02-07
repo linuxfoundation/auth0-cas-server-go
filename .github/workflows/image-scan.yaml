@@ -25,7 +25,7 @@ jobs:
           go-version-file: go.mod
       - uses: ko-build/setup-ko@v0.8
       - run: |
-          ko build . --push=false --tarball ${RUNNER_TEMP}/image.tar \
+          ko build . --push=false --tarball "${RUNNER_TEMP}/image.tar" \
             --bare \
             --platform linux/arm64 \
             --sbom spdx
@@ -34,4 +34,4 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh \
             | sh -s -- -b /usr/local/bin
       - run: |
-          trufflehog --github-actions filesystem ${RUNNER_TEMP}/image.tar
+          trufflehog --github-actions filesystem "${RUNNER_TEMP}/image.tar"
