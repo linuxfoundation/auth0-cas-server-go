@@ -24,6 +24,8 @@ jobs:
         with:
           go-version-file: go.mod
       - uses: ko-build/setup-ko@v0.8
+        with:
+          version: v0.17.1
       - run: |
           ko build . --push=false --tarball "${RUNNER_TEMP}/image.tar" \
             --bare \
