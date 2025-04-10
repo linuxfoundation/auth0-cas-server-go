@@ -4,19 +4,18 @@
 
 This service was inspired by Auth0, through their `auth0-cas-server` service
 formerly hosted at `github.com/auth0-samples/auth0-cas-server` (link now dead).
-It is a simple authentication redirector which wraps an OpenID Connect
-authentication flow to expose it as server implementing the Central
-Authentication Service (CAS) SSO protocol. The service leverages configuration
-stored within Auth0 client metadata, which it reads using a privileged
-connection to the Auth0 API, in order to emulate multiple different clients
-dynamically per login session.
+Like that service, it uses HTTP redirects to wrap an OpenID Connect
+authentication flow with the Central Authentication Service (CAS) SSO protocol,
+emulating multiple CAS clients from a single instance of the service. It does
+this by using a privileged connection to the Auth0 Management API to find
+clients tagged with CAS metadata, and dynamically adopting their client
+credentials.
 
-Notable differeces with this implementation:
+Notable differences include:
 
 - Rewritten in Go, including OpenTelemetry instrumentation and multi-arch build
   outputs including SPDX SBOMs.
-- Supports several additional CAS protocol endpoints implementing multiple CAS
-  versions.
+- Additional HTTP endpoints to implement additional CAS protocol versions.
 - Implements CAS single-logout.
 - Implements CAS "gateway mode" to test for authentication without prompting
   the user.
@@ -55,7 +54,19 @@ Please see `env-example` for a list of required and optional environment
 variables that can be used to configure the server. For local development, you
 can copy this file to `.env` and modify it to suit your needs.
 
-## Auth0 client configuration
+## Auth0 API client configuration
+
+This service requires a non-interactive (machine-to-machine) client that
+supports the `client_credentials` grant type and is authorized for the
+following scopes on the Auth0 Management API:
+
+- `read:clients`
+- `read:client_keys`
+
+The client ID and client secret for this API client must be passed as
+environmental variables to the service.
+
+## Auth0 CAS client configuration
 
 To create a CAS-enabled Auth0 application, specify the follow settings:
 

@@ -4,6 +4,7 @@
 // The auth0-cas-service-go service.
 package main
 
+// spell-checker:disable
 import (
 	"context"
 	"os"
@@ -17,6 +18,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 )
+
+// spell-checker:enable
 
 type otelErrorHandler struct{}
 

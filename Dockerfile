@@ -6,8 +6,8 @@
 
 FROM --platform=$BUILDPLATFORM cgr.dev/chainguard/go:latest AS builder
 
-# Set necessary environment variables needed for our image. Allow building to
-# other architectures via cross-compliation build-arg.
+# Set necessary environment variables needed for our image. Allow cross-compile
+# builds to other architectures via build-arg.
 ARG TARGETARCH
 ENV CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH
 

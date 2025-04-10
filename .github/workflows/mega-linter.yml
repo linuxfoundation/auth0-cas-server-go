@@ -30,4 +30,4 @@ jobs:
       - name: MegaLinter
         id: ml
         # Use the Go flavor.
-        uses: oxsecurity/megalinter/flavors/go@v7
+        uses: oxsecurity/megalinter/flavors/go@v8

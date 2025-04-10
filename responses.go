@@ -4,6 +4,7 @@
 // The auth0-cas-service-go service.
 package main
 
+// spell-checker:disable
 import (
 	"encoding/json"
 	"encoding/xml"
@@ -14,12 +15,14 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+// spell-checker:enable
+
 type casValidationResponse struct {
 	ServiceResponse casServiceResponse `json:"serviceResponse" xml:"-"`
 }
 
 type casServiceResponse struct {
-	// I'm not able to get xmlnas:cas to show up using native namespace in
+	// I'm not able to get `xmlns:cas` to show up using native namespace in
 	// XMLName, so we're using a workaround of setting a XMLNS attribute.
 	XMLName xml.Name `json:"-" xml:"cas:serviceResponse"`
 	XMLNS   string   `json:"-" xml:"xmlns:cas,attr"`
@@ -38,19 +41,20 @@ type casAttributes struct {
 	// document, and we are preserving as much as possible the output from
 	// our reference implementation. (Including first/full/last for field_* but
 	// first/last/full for profile_*).
-	AttraStyle    string   `json:"-" xml:"cas:attraStyle"`
-	UID           string   `json:"-" xml:"cas:uid"`
-	Email         string   `json:"email" xml:"cas:mail"`
-	Created       uint64   `json:"-" xml:"cas:created"`
-	Timezone      string   `json:"timezone,omitempty" xml:"cas:timezone,omitempty"`
-	Language      string   `json:"-" xml:"cas:language"`
-	Groups        []string `json:"groups" xml:"cas:group,omitempty"`
-	GivenName     string   `json:"given_name" xml:"cas:field_lf_first_name"`
-	FullName      string   `json:"name" xml:"cas:field_lf_full_name"`
-	FamilyName    string   `json:"family_name" xml:"cas:field_lf_last_name"`
-	GivenNameOld  string   `json:"-" xml:"cas:profile_name_first"`
-	FamilyNameOld string   `json:"-" xml:"cas:profile_name_last"`
-	FullNameOld   string   `json:"-" xml:"cas:profile_name_full"`
+	// cspell:disable-next-line
+	AttributesStyle string   `json:"-" xml:"cas:attraStyle"`
+	UID             string   `json:"-" xml:"cas:uid"`
+	Email           string   `json:"email" xml:"cas:mail"`
+	Created         uint64   `json:"-" xml:"cas:created"`
+	Timezone        string   `json:"timezone,omitempty" xml:"cas:timezone,omitempty"`
+	Language        string   `json:"-" xml:"cas:language"`
+	Groups          []string `json:"groups" xml:"cas:group,omitempty"`
+	GivenName       string   `json:"given_name" xml:"cas:field_lf_first_name"`
+	FullName        string   `json:"name" xml:"cas:field_lf_full_name"`
+	FamilyName      string   `json:"family_name" xml:"cas:field_lf_last_name"`
+	GivenNameOld    string   `json:"-" xml:"cas:profile_name_first"`
+	FamilyNameOld   string   `json:"-" xml:"cas:profile_name_last"`
+	FullNameOld     string   `json:"-" xml:"cas:profile_name_full"`
 }
 
 type casAuthenticationFailure struct {
@@ -59,6 +63,7 @@ type casAuthenticationFailure struct {
 }
 
 var (
+	// spell-checker:disable
 	// mb4RE matches anything outside the range of mb3 characters (\u0000-\uD7FF and
 	// \uE000-\uEEEE) with mb3 emoji excluded (\u203C-\u26ff).
 	mb4RE = regexp.MustCompile(`[^\x{0000}-\x{203B}\x{2700}-\x{D7FF}\x{E000}-\x{FFFF}]`)
@@ -67,6 +72,8 @@ var (
 	// usernames.
 	mbIllegalRE = regexp.MustCompile(`[\x{80}-\x{A0}\x{AD}\x{2000}-\x{200F}\x{2028}-\x{202F}\x{205F}-\x{206F}\x{FEFF}\x{FF01}-\x{FF60}\x{FFF9}-\x{FFFD}\x{0}-\x{1F}]`)
 	spacesRE    = regexp.MustCompile(`[[:space:]]+`)
+
+	// spell-checker:enable
 )
 
 func validationResponse(success *casAuthenticationSuccess, failure *casAuthenticationFailure, useJSON bool) (string, error) {
@@ -105,9 +112,9 @@ func validationResponse(success *casAuthenticationSuccess, failure *casAuthentic
 // Normalize processes a passed attributes object and ensure attributes are
 // safe for storage in MySQL legacy utf8 (3-byte encoding).
 func (attr *casAttributes) Normalize() {
-	// Set AttraStyle to the default "jasig" if unset.
-	if attr.AttraStyle == "" {
-		attr.AttraStyle = "Jasig"
+	// Set phpCAS "attributes style" flag to the default if unset.
+	if attr.AttributesStyle == "" {
+		attr.AttributesStyle = "Jasig"
 	}
 
 	// Normalize name(s).

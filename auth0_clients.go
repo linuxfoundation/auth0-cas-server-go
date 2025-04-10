@@ -4,6 +4,7 @@
 // The auth0-cas-service-go service.
 package main
 
+// spell-checker:disable
 import (
 	"context"
 	"encoding/json"
@@ -21,6 +22,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2/clientcredentials"
 )
+
+// spell-checker:enable
 
 var (
 	auth0Client *http.Client
@@ -171,7 +174,7 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 			}
 
 			// There is a match
-			appLogger(ctx).WithFields(logrus.Fields{"service": serviceURL, "glob": glob, "auth0_client": client.Name}).Debugln("matched service in glob cache")
+			appLogger(ctx).WithFields(logrus.Fields{"service": serviceURL, "glob": glob, "auth0_client": client.Name}).Debug("matched service in glob cache")
 			auth0Cache.Set("cas-service-url/"+url.PathEscape(serviceURL), client, cache.NoExpiration)
 			return &client, nil
 		}
@@ -204,7 +207,7 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 
 		serviceGlobs := strings.Split(client.ClientMetadata["cas_service"], ",")
 
-		// Iterate over any comma-delimeted cas_service globs in the
+		// Iterate over any comma-delimited cas_service globs in the
 		// client_metadata.
 		for _, glob := range serviceGlobs {
 			match, err := doublestar.Match(glob, serviceURL)
@@ -222,7 +225,7 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 				continue
 			}
 
-			appLogger(ctx).WithFields(logrus.Fields{"service": serviceURL, "glob": glob, "auth0_client": client.Name}).Debugln("matched service")
+			appLogger(ctx).WithFields(logrus.Fields{"service": serviceURL, "glob": glob, "auth0_client": client.Name}).Debug("matched service")
 			// If the glob matches, save the match, but keep processing remaining
 			// comma-delimited globs AND clients to complete the glob-to-client cache
 			// update.

@@ -4,6 +4,7 @@
 // The auth0-cas-service-go service.
 package main
 
+// spell-checker:disable
 import (
 	"context"
 	_ "expvar"
@@ -21,6 +22,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// spell-checker:enable
+
 type contextID int
 
 const (
@@ -35,8 +38,8 @@ var (
 // main parses optional flags and starts http listener.
 func main() {
 	var debug = flag.Bool("d", false, "enable debug logging")
-	var logJSON = flag.Bool("json", false, "force json logging to console (default: autodetect enviroment)")
-	var noTrace = flag.Bool("notrace", false, "disable OTLP tracing output")
+	var logJSON = flag.Bool("json", false, "force json logging to console (default: autodetect environment)")
+	var noTrace = flag.Bool("no-trace", false, "disable OTLP tracing output")
 	var port = flag.String("p", "5000", "port")
 	var bind = flag.String("bind", "*", "interface to bind on")
 	flag.Usage = func() {
