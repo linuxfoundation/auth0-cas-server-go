@@ -4,6 +4,7 @@
 // The auth0-cas-service-go service.
 package main
 
+// spell-checker:disable
 import (
 	"context"
 	"crypto/rand"
@@ -20,6 +21,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
+
+// spell-checker:enable
 
 var store *sessions.CookieStore
 

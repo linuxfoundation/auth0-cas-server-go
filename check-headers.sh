@@ -8,7 +8,7 @@
 # Exits with a 1 if one or more source files are missing a license header
 
 # Exclude code coming from a third-party. Typically these won't be checked into
-# source control, but occassionally "vendored" code is committed.
+# source control, but occasionally "vendored" code is committed.
 exclude_pattern='^(.*/)?(node_modules|vendor)/'
 
 # Include build definitions.

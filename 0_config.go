@@ -4,6 +4,7 @@
 // The auth0-cas-service-go service.
 package main
 
+// spell-checker:disable
 import (
 	"fmt"
 	"os"
@@ -12,6 +13,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
+
+// spell-checker:enable
 
 type config struct {
 	Auth0Tenant  string
