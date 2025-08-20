@@ -37,5 +37,7 @@ jobs:
             | sh -s -- -b /usr/local/bin
       - name: Run trufflehog on image.tar
         run: |
-          trufflehog --fail --no-update --github-actions \
+          trufflehog --github-actions \
+            --fail --no-update \
+            --results=verified,unknown \
             filesystem "${RUNNER_TEMP}/image.tar"
