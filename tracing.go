@@ -7,10 +7,10 @@ package main
 // spell-checker:disable
 import (
 	"context"
+	"log/slog"
 	"os"
 	"strconv"
 
-	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -24,7 +24,7 @@ import (
 type otelErrorHandler struct{}
 
 func (h *otelErrorHandler) Handle(err error) {
-	logrus.WithError(err).Error("opentelemetry-go error")
+	slog.Error("opentelemetry-go error", "error", err)
 }
 
 func init() {
@@ -38,7 +38,8 @@ func initOTLP() func() {
 
 	exp, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure())
 	if err != nil {
-		logrus.WithError(err).Fatal("failed to create exporter")
+		slog.Error("failed to create exporter", "error", err)
+		os.Exit(1)
 	}
 
 	bsp := sdktrace.NewBatchSpanProcessor(exp)
@@ -58,7 +59,8 @@ func initOTLP() func() {
 			),
 		)
 		if err != nil {
-			logrus.WithError(err).Fatal("failed to create resource")
+			slog.Error("failed to create resource", "error", err)
+			os.Exit(1)
 		}
 		opts = append(opts, sdktrace.WithResource(res))
 	}
@@ -71,10 +73,12 @@ func initOTLP() func() {
 
 	return func() {
 		if err = tracerProvider.Shutdown(ctx); err != nil {
-			logrus.WithError(err).Fatal("failed to shutdown provider")
+			slog.Error("failed to shutdown provider", "error", err)
+			os.Exit(1)
 		}
 		if err = exp.Shutdown(ctx); err != nil {
-			logrus.WithError(err).Fatal("failed to stop exporter")
+			slog.Error("failed to stop exporter", "error", err)
+			os.Exit(1)
 		}
 	}
 }

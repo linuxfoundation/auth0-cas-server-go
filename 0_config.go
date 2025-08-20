@@ -7,11 +7,11 @@ package main
 // spell-checker:disable
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
 )
 
 // spell-checker:enable
@@ -38,12 +38,14 @@ func init() {
 
 	cfg.Auth0Tenant = os.Getenv("AUTH0_TENANT")
 	if cfg.Auth0Tenant == "" {
-		logrus.Fatalln("AUTH0_TENANT not set")
+		slog.Error("AUTH0_TENANT not set")
+		os.Exit(1)
 	}
 	if strings.ContainsAny(strings.TrimSuffix(cfg.Auth0Tenant, ".us"), "./:") {
 		// .us is allowed, but otherwise AUTH0_TENANT cannot contain anything
 		// looking like a domain name or URL.
-		logrus.Fatalln("invalid AUTH0_TENANT")
+		slog.Error("invalid AUTH0_TENANT")
+		os.Exit(1)
 	}
 	cfg.Auth0Domain = os.Getenv("AUTH0_DOMAIN")
 	if cfg.Auth0Domain == "" {
@@ -51,16 +53,19 @@ func init() {
 	}
 	cfg.ClientID = os.Getenv("CLIENT_ID")
 	if cfg.ClientID == "" {
-		logrus.Fatalln("CLIENT_ID not set")
+		slog.Error("CLIENT_ID not set")
+		os.Exit(1)
 	}
 	cfg.ClientSecret = os.Getenv("CLIENT_SECRET")
 	if cfg.ClientSecret == "" {
-		logrus.Fatalln("CLIENT_SECRET not set")
+		slog.Error("CLIENT_SECRET not set")
+		os.Exit(1)
 	}
 
 	cfg.CookieSecret = os.Getenv("COOKIE_SECRET")
 	if cfg.CookieSecret == "" {
-		logrus.Fatalln("COOKIE_SECRET not set")
+		slog.Error("COOKIE_SECRET not set")
+		os.Exit(1)
 	}
 
 	insecureCookie := os.Getenv("INSECURE_COOKIE")

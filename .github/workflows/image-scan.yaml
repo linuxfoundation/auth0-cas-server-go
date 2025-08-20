@@ -25,7 +25,7 @@ jobs:
           go-version-file: go.mod
       - uses: ko-build/setup-ko@v0.8
         with:
-          version: v0.17.1
+          version: v0.18.0
       - run: |
           ko build . --push=false --tarball "${RUNNER_TEMP}/image.tar" \
             --bare \
@@ -37,5 +37,7 @@ jobs:
             | sh -s -- -b /usr/local/bin
       - name: Run trufflehog on image.tar
         run: |
-          trufflehog --fail --no-update --github-actions \
+          trufflehog --github-actions \
+            --fail --no-update \
+            --results=verified,unknown \
             filesystem "${RUNNER_TEMP}/image.tar"

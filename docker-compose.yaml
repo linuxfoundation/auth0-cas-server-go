@@ -53,10 +53,3 @@ services:
       - DD_ENV
     depends_on:
       - jaeger-all-in-one
-
-  # Fluentbit (to stdout) agent for testing Fluent logging
-  fluentbit:
-    image: docker.io/fluent/fluent-bit:1.8
-    ports:
-      - "24224:24224"
-    command: "/fluent-bit/bin/fluent-bit -i forward -o stdout"

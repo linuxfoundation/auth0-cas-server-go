@@ -10,13 +10,11 @@ import (
 	_ "expvar"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
-	"github.com/evalphobia/logrus_fluent"
-	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.10.0"
 	"go.opentelemetry.io/otel/trace"
@@ -48,54 +46,43 @@ func main() {
 	}
 	flag.Parse()
 
-	// Optional debug logging.
+	// Configure slog logging.
+	var logLevel slog.Level
 	if os.Getenv("DEBUG") != "" || *debug {
-		logrus.SetLevel(logrus.DebugLevel)
+		logLevel = slog.LevelDebug
+	} else {
+		logLevel = slog.LevelInfo
 	}
 
 	_, isECS := os.LookupEnv("ECS_CONTAINER_METADATA_URI_V4")
+	var handler slog.Handler
 	switch {
 	case isECS:
-		// Assume output to CloudWatch logs which has native timestamps. Use
-		// "message" for cleaner integration with log aggregation service.
-		logrus.SetFormatter(&logrus.JSONFormatter{
-			DisableTimestamp: true,
-			FieldMap: logrus.FieldMap{
-				logrus.FieldKeyMsg: "message",
+		// Assume ECS is logging to CloudWatch logs and use JSON format.
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: logLevel,
+			ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+				// The timestamp attribute will be redundant with the CloudWatch logs
+				// timestamp.
+				if a.Key == slog.TimeKey {
+					return slog.Attr{}
+				}
+				// Use "message" instead of "msg" for compatibility with external log
+				// aggregators.
+				if a.Key == slog.MessageKey {
+					return slog.String("message", a.Value.String())
+				}
+				return a
 			},
 		})
 	case *logJSON:
-		logrus.SetFormatter(&logrus.JSONFormatter{})
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
+	default:
+		handler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
 	}
 
-	if fluentHost, useFluent := os.LookupEnv("FLUENT_HOST"); useFluent {
-		var fluentPort int64 = 24224
-		if fluentPortEnv, ok := os.LookupEnv("FLUENT_PORT"); ok {
-			var err error
-			fluentPort, err = strconv.ParseInt(fluentPortEnv, 10, 32)
-			if err != nil {
-				logrus.WithField("fluent_port", fluentPortEnv).WithError(err).Fatal("unable to parse FLUENT_PORT")
-			}
-		}
-		hook, err := logrus_fluent.NewWithConfig(logrus_fluent.Config{
-			Host:         fluentHost,
-			Port:         int(fluentPort),
-			AsyncConnect: true,
-		})
-		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"host":          fluentHost,
-				"port":          fluentPort,
-				logrus.ErrorKey: err,
-			}).Fatal("could not set up fluentd logger")
-		}
-		hook.SetTag(serviceName + ".log")
-
-		// Convert error struct to string.
-		hook.AddFilter(logrus.ErrorKey, logrus_fluent.FilterError)
-
-		logrus.AddHook(hook)
-	}
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
 
 	// Instrument Open Telemetry.
 	if !*noTrace {
@@ -168,7 +155,8 @@ func main() {
 	}
 	err := server.ListenAndServe()
 	if err != nil {
-		logrus.WithError(err).Fatal("http listener error")
+		slog.Error("http listener error", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -186,7 +174,7 @@ func routeTagHandler(inner http.Handler) http.Handler {
 	return http.HandlerFunc(mw)
 }
 
-// loggingHandler adds a logrus.Entry into the context of the current request.
+// loggingHandler adds a slog.Logger into the context of the current request.
 func loggingHandler(inner http.Handler) http.Handler {
 	mw := func(w http.ResponseWriter, r *http.Request) {
 		ctx := withLogger(r.Context(), requestLogger(r))
@@ -195,28 +183,28 @@ func loggingHandler(inner http.Handler) http.Handler {
 	return http.HandlerFunc(mw)
 }
 
-func withLogger(ctx context.Context, logger *logrus.Entry) context.Context {
+func withLogger(ctx context.Context, logger *slog.Logger) context.Context {
 	return context.WithValue(ctx, logEntryID, logger)
 }
 
-func appLogger(ctx context.Context) *logrus.Entry {
+func appLogger(ctx context.Context) *slog.Logger {
 	if ctx == nil {
-		return logrus.NewEntry(logrus.StandardLogger())
+		return slog.Default()
 	}
 
-	if logger, ok := ctx.Value(logEntryID).(*logrus.Entry); ok {
+	if logger, ok := ctx.Value(logEntryID).(*slog.Logger); ok {
 		return logger
 	}
 
-	return logrus.NewEntry(logrus.StandardLogger())
+	return slog.Default()
 }
 
-func requestLogger(r *http.Request) *logrus.Entry {
-	e := logrus.WithFields(logrus.Fields{
-		"method": r.Method,
-		"url":    r.URL.Path,
-		"query":  r.URL.RawQuery,
-	})
+func requestLogger(r *http.Request) *slog.Logger {
+	logger := slog.Default().With(
+		"method", r.Method,
+		"url", r.URL.Path,
+		"query", r.URL.RawQuery,
+	)
 
 	var headerIP string
 	if cfg.RemoteIPHeader != "" {
@@ -224,29 +212,27 @@ func requestLogger(r *http.Request) *logrus.Entry {
 	}
 
 	if referer := r.Header.Get("Referer"); referer != "" {
-		e = e.WithField("referer", referer)
+		logger = logger.With("referer", referer)
 	}
 
 	switch headerIP {
 	case "":
 		// Log the client IP.
-		e = e.WithField("client", r.RemoteAddr)
+		logger = logger.With("client", r.RemoteAddr)
 	default:
 		// Log the IP recorded in the configured header.
-		e = e.WithField("client", headerIP)
+		logger = logger.With("client", headerIP)
 	}
 
 	// Add trace and span IDs (if any) for log/trace correlation.
 	spanContext := trace.SpanContextFromContext(r.Context())
 	if traceID := spanContext.TraceID(); traceID.IsValid() {
-		e = e.WithField("trace_id", traceID.String())
-		e = e.WithField("dd.trace_id", convertTraceID(traceID.String()))
+		logger = logger.With("trace_id", traceID.String(), "dd.trace_id", convertTraceID(traceID.String()))
 	}
 	if spanID := spanContext.SpanID(); spanID.IsValid() {
-		e = e.WithField("span_id", spanID.String())
-		e = e.WithField("dd.span_id", convertTraceID(spanID.String()))
+		logger = logger.With("span_id", spanID.String(), "dd.span_id", convertTraceID(spanID.String()))
 	}
-	e = e.WithField("trace_flags", spanContext.TraceFlags().String())
+	logger = logger.With("trace_flags", spanContext.TraceFlags().String())
 
-	return e
+	return logger
 }

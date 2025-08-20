@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/gorilla/sessions"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
 
@@ -62,31 +61,31 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 
 	service := params.Get("service")
 	if service == "" {
-		appLogger(r.Context()).Warning("service parameter is required")
+		appLogger(r.Context()).Warn("service parameter is required")
 		http.Error(w, "service parameter is required", http.StatusBadRequest)
 		return
 	}
 
 	if _, err := url.Parse(service); err != nil {
 		// We don't use this now, but better to catch here than in oauth2Callback.
-		appLogger(r.Context()).Warning("invalid service URL")
+		appLogger(r.Context()).Warn("invalid service URL")
 		http.Error(w, "invalid service URL", http.StatusBadRequest)
 		return
 	}
 
 	casClient, err := getAuth0ClientByService(r.Context(), service)
 	if err != nil {
-		appLogger(r.Context()).WithError(err).Error("error looking up service")
+		appLogger(r.Context()).Error("error looking up service", "error", err)
 		http.Error(w, "error looking up service", http.StatusInternalServerError)
 		return
 	}
 	if casClient == nil {
-		appLogger(r.Context()).Warning("unknown service")
+		appLogger(r.Context()).Warn("unknown service")
 		http.Error(w, "unknown service", http.StatusForbidden)
 		return
 	}
 
-	appLogger(r.Context()).WithField("auth0_client", casClient).Debug("found client")
+	appLogger(r.Context()).Debug("found client", "auth0_client", casClient)
 
 	renew := params.Get("renew")
 
@@ -108,13 +107,13 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil && err.Error() == "securecookie: the value is too long" {
 		// The cookie can get too big if the user tries 10+ logins in the day
 		// without returning from any of them.
-		appLogger(r.Context()).Warning("cookie too large (bot or other bad client)")
+		appLogger(r.Context()).Warn("cookie too large (bot or other bad client)")
 		w.Header().Set("Retry-After", "86400")
 		http.Error(w, "429 too many requests", http.StatusTooManyRequests)
 		return
 	}
 	if err != nil {
-		appLogger(r.Context()).WithError(err).Error("error saving session")
+		appLogger(r.Context()).Error("error saving session", "error", err)
 		http.Error(w, "500 internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -235,7 +234,7 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appLogger(r.Context()).WithField("auth0_client", casClient).Debug("found client")
+	appLogger(r.Context()).Debug("found client", "auth0_client", casClient)
 
 	// Construct an OAuth2 config that lets us complete the authorization code
 	// handshake to to get an access token.
@@ -254,11 +253,10 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	// the client is configured for it), without significantly increasing the
 	// complexity of the codebase.
 	config := oauth2CfgFromAuth0Client(*casClient, r.Host)
-	appLogger(r.Context()).WithFields(logrus.Fields{
-		"client_id": config.ClientID,
-		"token_url": config.Endpoint.TokenURL,
-		"code":      authCode,
-	}).Debug("auth code exchange")
+	appLogger(r.Context()).Debug("auth code exchange",
+		"client_id", config.ClientID,
+		"token_url", config.Endpoint.TokenURL,
+		"code", authCode)
 	token, err := config.Exchange(context.WithValue(r.Context(), oauth2.HTTPClient, httpClient), authCode)
 
 	if err != nil {
@@ -266,7 +264,7 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 			if rErr.Response.StatusCode == 403 {
 				// Rather than decoding the JSON payload, we can assume a 403 means the
 				// auth code (as provided as a CAS service ticket) was invalid.
-				appLogger(r.Context()).WithError(err).Debug("auth code exchange 403 response")
+				appLogger(r.Context()).Debug("auth code exchange 403 response", "error", err)
 				outputFailure(r.Context(), w, nil, "INVALID_TICKET", "invalid ticket", useJSON)
 				return
 			}
@@ -322,13 +320,13 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	}
 	output, err := validationResponse(&success, nil, useJSON)
 	if err != nil {
-		appLogger(r.Context()).WithError(err).WithField("success", success).Error("error generating validation response")
+		appLogger(r.Context()).Error("error generating validation response", "error", err, "success", success)
 		w.WriteHeader(http.StatusInternalServerError)
 		http.Error(w, "error generating validation response", http.StatusInternalServerError)
 		return
 	}
 
-	appLogger(r.Context()).WithField("body", output).Debug("sending validation response")
+	appLogger(r.Context()).Debug("sending validation response", "body", output)
 
 	switch useJSON {
 	case true:
@@ -396,27 +394,27 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	if errParam == "access_denied" {
 		// Consider this a warning-level error for logging purposes.
 		err := fmt.Errorf("%s: %s", errParam, errDescription)
-		appLogger(r.Context()).WithError(err).Warning("login aborted")
+		appLogger(r.Context()).Warn("login aborted", "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if errParam != "" {
 		err := fmt.Errorf("%s: %s", errParam, errDescription)
-		appLogger(r.Context()).WithError(err).Error("login error")
+		appLogger(r.Context()).Error("login error", "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	code := params.Get("code")
 	if code == "" {
-		appLogger(r.Context()).Warning("invalid request")
+		appLogger(r.Context()).Warn("invalid request")
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	state := params.Get("state")
 	if state == "" {
-		appLogger(r.Context()).Warning("missing state")
+		appLogger(r.Context()).Warn("missing state")
 		http.Error(w, "missing state", http.StatusBadRequest)
 		return
 	}
@@ -425,7 +423,7 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	var service string
 	var ok bool
 	if service, ok = session.Values[state].(string); !ok {
-		appLogger(r.Context()).Warning("session missing or expired")
+		appLogger(r.Context()).Warn("session missing or expired")
 		http.Error(w, "session missing or expired", http.StatusBadRequest)
 		return
 	}
@@ -435,7 +433,7 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 
 	serviceURL, err := url.Parse(service)
 	if err != nil {
-		appLogger(r.Context()).Warning("invalid service URL")
+		appLogger(r.Context()).Warn("invalid service URL")
 		http.Error(w, "invalid service URL", http.StatusBadRequest)
 		return
 	}
@@ -479,26 +477,24 @@ func getLogoutParams(ctx context.Context, returnTo string) *url.Values {
 	returnURL, err := url.Parse(returnTo)
 	if err != nil {
 		// Warn about the error and continue.
-		appLogger(ctx).WithFields(logrus.Fields{
-			"returnTo":      returnTo,
-			logrus.ErrorKey: err,
-		}).Warn("ignoring invalid returnTo URL")
+		appLogger(ctx).Warn("ignoring invalid returnTo URL",
+			"returnTo", returnTo,
+			"error", err)
 		return nil
 	}
 
 	casClient, err := getAuth0ClientByService(ctx, returnTo)
 	if err != nil {
 		// Warn about the error and continue.
-		appLogger(ctx).WithFields(logrus.Fields{
-			"returnTo":      returnTo,
-			logrus.ErrorKey: err,
-		}).Warn("ignoring unexpected error validating logout redirection")
+		appLogger(ctx).Warn("ignoring unexpected error validating logout redirection",
+			"returnTo", returnTo,
+			"error", err)
 		return nil
 	}
 
 	if casClient == nil {
 		// No cas_service configurations matched the requested logout redirect.
-		appLogger(ctx).WithField("returnTo", returnTo).Warn("ignoring unauthorized logout redirection")
+		appLogger(ctx).Warn("ignoring unauthorized logout redirection", "returnTo", returnTo)
 		return nil
 	}
 
@@ -509,7 +505,7 @@ func getLogoutParams(ctx context.Context, returnTo string) *url.Values {
 	for _, allowedLogoutValue := range casClient.AllowedLogoutURLs {
 		allowedLogoutURL, err := url.Parse(allowedLogoutValue)
 		if err != nil {
-			appLogger(ctx).WithField("allowed_logout_url", allowedLogoutValue).Warn("unable to parse allowed_logout_urls value")
+			appLogger(ctx).Warn("unable to parse allowed_logout_urls value", "allowed_logout_url", allowedLogoutValue)
 			continue
 		}
 		allowedLogoutURL.RawQuery = ""
@@ -522,10 +518,9 @@ func getLogoutParams(ctx context.Context, returnTo string) *url.Values {
 		}
 	}
 
-	appLogger(ctx).WithFields(logrus.Fields{
-		"returnTo":  returnTo,
-		"client_id": casClient.ClientID,
-	}).Warn("returnTo not allowed by allowed_logout_urls")
+	appLogger(ctx).Warn("returnTo not allowed by allowed_logout_urls",
+		"returnTo", returnTo,
+		"client_id", casClient.ClientID)
 
 	return nil
 }
@@ -538,15 +533,15 @@ func getLogoutParams(ctx context.Context, returnTo string) *url.Values {
 func outputFailure(ctx context.Context, w http.ResponseWriter, err error, code, description string, useJSON bool) {
 	switch {
 	case err != nil:
-		appLogger(ctx).WithError(err).Error(description)
+		appLogger(ctx).Error(description, "error", err)
 	default:
-		appLogger(ctx).Warning(description)
+		appLogger(ctx).Warn(description)
 	}
 
 	failure := casAuthenticationFailure{code, description}
 	output, err := validationResponse(nil, &failure, useJSON)
 	if err != nil {
-		appLogger(ctx).WithError(err).WithField("failure", failure).Error("error generating validation response")
+		appLogger(ctx).Error("error generating validation response", "error", err, "failure", failure)
 		w.WriteHeader(http.StatusInternalServerError)
 		http.Error(w, "error generating validation response", http.StatusInternalServerError)
 		return
