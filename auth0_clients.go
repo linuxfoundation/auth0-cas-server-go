@@ -19,7 +19,6 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/patrickmn/go-cache"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
@@ -111,10 +110,9 @@ func getAuth0Clients(ctx context.Context) ([]auth0ClientStub, error) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			appLogger(ctx).WithFields(logrus.Fields{
-				"status": resp.StatusCode,
-				"body":   string(bodyBytes),
-			}).Error("Auth0 get_users error")
+			appLogger(ctx).Error("Auth0 get_users error",
+				"status", resp.StatusCode,
+				"body", string(bodyBytes))
 			return nil, errors.New("Auth0 get_clients error")
 		}
 
@@ -163,10 +161,9 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 			var match bool
 			match, err = doublestar.Match(glob, serviceURL)
 			if err != nil {
-				appLogger(ctx).WithFields(logrus.Fields{
-					"pattern":       glob,
-					logrus.ErrorKey: err,
-				}).Warning("unexpected bad cas_service glob in cache")
+				appLogger(ctx).Warn("unexpected bad cas_service glob in cache",
+					"pattern", glob,
+					"error", err)
 				continue
 			}
 			if !match {
@@ -174,7 +171,7 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 			}
 
 			// There is a match
-			appLogger(ctx).WithFields(logrus.Fields{"service": serviceURL, "glob": glob, "auth0_client": client.Name}).Debug("matched service in glob cache")
+			appLogger(ctx).Debug("matched service in glob cache", "service", serviceURL, "glob", glob, "auth0_client", client.Name)
 			auth0Cache.Set("cas-service-url/"+url.PathEscape(serviceURL), client, cache.NoExpiration)
 			return &client, nil
 		}
@@ -198,10 +195,9 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 		}
 
 		if client.TokenEndpointAuthMethod != "client_secret_post" && client.TokenEndpointAuthMethod != "client_secret_basic" {
-			appLogger(ctx).WithFields(logrus.Fields{
-				"token_endpoint_auth_method": client.TokenEndpointAuthMethod,
-				"auth0_client":               client.Name,
-			}).Warning("client with cas_service has unsupported token_endpoint_auth_method")
+			appLogger(ctx).Warn("client with cas_service has unsupported token_endpoint_auth_method",
+				"token_endpoint_auth_method", client.TokenEndpointAuthMethod,
+				"auth0_client", client.Name)
 			continue
 		}
 
@@ -212,10 +208,9 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 		for _, glob := range serviceGlobs {
 			match, err := doublestar.Match(glob, serviceURL)
 			if err != nil {
-				appLogger(ctx).WithFields(logrus.Fields{
-					"pattern":       glob,
-					logrus.ErrorKey: err,
-				}).Warning("ignoring bad cas_service glob")
+				appLogger(ctx).Warn("ignoring bad cas_service glob",
+					"pattern", glob,
+					"error", err)
 				continue
 			}
 			// Store the glob-to-client lookup (for cache).
@@ -225,7 +220,7 @@ func getAuth0ClientByService(ctx context.Context, serviceURL string) (*auth0Clie
 				continue
 			}
 
-			appLogger(ctx).WithFields(logrus.Fields{"service": serviceURL, "glob": glob, "auth0_client": client.Name}).Debug("matched service")
+			appLogger(ctx).Debug("matched service", "service", serviceURL, "glob", glob, "auth0_client", client.Name)
 			// If the glob matches, save the match, but keep processing remaining
 			// comma-delimited globs AND clients to complete the glob-to-client cache
 			// update.
