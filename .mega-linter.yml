@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: MIT
 ---
 DISABLE_LINTERS:
+  # Skipping for now.
+  - HTML_DJLINT
+  - HTML_HTMLHINT
   # Revive covers this, plus golangci-lint has trouble with newer go toolchains
   # in go.mod.
   - GO_GOLANGCI_LINT

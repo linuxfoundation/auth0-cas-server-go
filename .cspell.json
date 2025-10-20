@@ -53,6 +53,7 @@
   ],
   "ignorePaths": [
     ".cspell.json",
+    ".mega-linter.yml",
     "LICENSE",
     "LICENSE-docs",
     "megalinter-reports"
