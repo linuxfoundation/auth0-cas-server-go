@@ -7,6 +7,7 @@ package main
 // spell-checker:disable
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -80,6 +81,8 @@ var (
 
 	// spell-checker:enable
 
+	//go:embed templates/error.html
+	errorTemplateContent string
 	// errorTemplate is the HTML template for error pages.
 	errorTemplate *template.Template
 )
@@ -91,10 +94,11 @@ type ErrorPageData struct {
 	ShowBackButton bool
 }
 
-// init initializes the error page template.
-func init() {
+// initErrorTemplate initializes the error page template from embedded content.
+// This should be called from main() after logging is set up.
+func initErrorTemplate() {
 	var err error
-	errorTemplate, err = template.ParseFiles("templates/error.html")
+	errorTemplate, err = template.New("error.html").Parse(errorTemplateContent)
 	if err != nil {
 		// Log error but don't fail - we'll fall back to plain text errors.
 		// This allows the service to start even if templates are missing.

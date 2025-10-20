@@ -84,6 +84,9 @@ func main() {
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
+	// Initialize error template after logging is set up.
+	initErrorTemplate()
+
 	// Instrument Open Telemetry.
 	if !*noTrace {
 		// Start OTLP forwarder and register the global tracing provider.
