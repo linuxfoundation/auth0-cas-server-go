@@ -33,5 +33,6 @@ USER nonroot
 EXPOSE 8080
 
 COPY --from=builder /go/bin/auth0-cas-server-go /auth0-cas-server-go
+COPY --from=builder /build/templates /templates
 
 ENTRYPOINT ["/auth0-cas-server-go", "-p=8080"]

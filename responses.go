@@ -6,9 +6,14 @@ package main
 
 // spell-checker:disable
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"fmt"
+	"html/template"
+	"log/slog"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -74,8 +79,59 @@ var (
 	spacesRE    = regexp.MustCompile(`[[:space:]]+`)
 
 	// spell-checker:enable
+
+	// errorTemplate is the HTML template for error pages.
+	errorTemplate *template.Template
 )
 
+// ErrorPageData represents the data passed to the error page template.
+type ErrorPageData struct {
+	StatusCode     int
+	Message        string
+	ShowBackButton bool
+}
+
+// init initializes the error page template.
+func init() {
+	var err error
+	errorTemplate, err = template.ParseFiles("templates/error.html")
+	if err != nil {
+		// Log error but don't fail - we'll fall back to plain text errors.
+		// This allows the service to start even if templates are missing.
+		slog.Warn("error parsing error template", "error", err)
+	}
+}
+
+// outputFailure handles a common case of reporting a problem to the
+// /cas/serviceValidate URL, which is expected to return a properly-formatted
+// error. This logs the issue, and formats and outputs the response (default
+// 200 status code). If the response cannot be formatted, an additional error
+// is logged and a plain-text message and 500 response is output.
+func outputFailure(ctx context.Context, w http.ResponseWriter, err error, code, description string, useJSON bool) {
+	switch {
+	case err != nil:
+		appLogger(ctx).Error(description, "error", err)
+	default:
+		appLogger(ctx).Warn(description)
+	}
+
+	failure := casAuthenticationFailure{code, description}
+	output, err := validationResponse(nil, &failure, useJSON)
+	if err != nil {
+		appLogger(ctx).Error("error generating validation response", "error", err, "failure", failure)
+		http.Error(w, "error generating validation response", http.StatusInternalServerError)
+		return
+	}
+	switch useJSON {
+	case true:
+		w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	default:
+		w.Header().Set("Content-Type", "application/xml;charset=UTF-8")
+	}
+	fmt.Fprintf(w, "%s\n", output)
+}
+
+// validationResponse formats CAS protocol responses for both successes and failures.
 func validationResponse(success *casAuthenticationSuccess, failure *casAuthenticationFailure, useJSON bool) (string, error) {
 	if success != nil && failure != nil {
 		return "", errors.New("must pass either a success or failure response, not both")
@@ -153,4 +209,44 @@ func mb4Filter(text string) string {
 	text = strings.TrimSpace(text)
 
 	return text
+}
+
+// renderUserErrorPage renders an HTML error page for user-facing endpoints.
+// Shows the "Go Back" button for navigation.
+func renderUserErrorPage(ctx context.Context, w http.ResponseWriter, statusCode int, message string) {
+	renderErrorPageInternal(ctx, w, statusCode, message, true)
+}
+
+// renderCallbackErrorPage renders an HTML error page for callback endpoints.
+// Does not show the "Go Back" button since callbacks should not allow navigation back.
+func renderCallbackErrorPage(ctx context.Context, w http.ResponseWriter, statusCode int, message string) {
+	renderErrorPageInternal(ctx, w, statusCode, message, false)
+}
+
+// renderErrorPageInternal renders an HTML error page using the template.
+// If template rendering fails, it falls back to a plain text error.
+func renderErrorPageInternal(ctx context.Context, w http.ResponseWriter, statusCode int, message string, showBackButton bool) {
+	// Try to render the HTML template.
+	if errorTemplate != nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(statusCode)
+
+		data := ErrorPageData{
+			StatusCode:     statusCode,
+			Message:        message,
+			ShowBackButton: showBackButton,
+		}
+
+		err := errorTemplate.Execute(w, data)
+		if err != nil {
+			// Log the template error but we can't fall back since we already wrote headers.
+			appLogger(ctx).Error("error rendering error template", "error", err)
+		}
+		return
+	}
+
+	// Fall back to plain text error if no template is available.
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(statusCode)
+	w.Write([]byte(message))
 }

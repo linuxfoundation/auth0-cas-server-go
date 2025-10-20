@@ -62,26 +62,26 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 	service := params.Get("service")
 	if service == "" {
 		appLogger(r.Context()).Warn("service parameter is required")
-		http.Error(w, "service parameter is required", http.StatusBadRequest)
+		renderUserErrorPage(r.Context(), w, http.StatusBadRequest, "Service parameter is required")
 		return
 	}
 
 	if _, err := url.Parse(service); err != nil {
 		// We don't use this now, but better to catch here than in oauth2Callback.
 		appLogger(r.Context()).Warn("invalid service URL")
-		http.Error(w, "invalid service URL", http.StatusBadRequest)
+		renderUserErrorPage(r.Context(), w, http.StatusBadRequest, "Invalid service URL")
 		return
 	}
 
 	casClient, err := getAuth0ClientByService(r.Context(), service)
 	if err != nil {
 		appLogger(r.Context()).Error("error looking up service", "error", err)
-		http.Error(w, "error looking up service", http.StatusInternalServerError)
+		renderUserErrorPage(r.Context(), w, http.StatusInternalServerError, "Error looking up service")
 		return
 	}
 	if casClient == nil {
 		appLogger(r.Context()).Warn("unknown service")
-		http.Error(w, "unknown service", http.StatusForbidden)
+		renderUserErrorPage(r.Context(), w, http.StatusForbidden, "Unknown service")
 		return
 	}
 
@@ -104,17 +104,17 @@ func casLogin(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "cas-shim")
 	session.Values[state] = service
 	err = session.Save(r, w)
-	if err != nil && err.Error() == "securecookie: the value is too long" {
+	if err != nil && strings.HasPrefix(err.Error(), "securecookie: the value is too long") {
 		// The cookie can get too big if the user tries 10+ logins in the day
 		// without returning from any of them.
-		appLogger(r.Context()).Warn("cookie too large (bot or other bad client)")
+		appLogger(r.Context()).Warn("cookie too large", "error", err)
 		w.Header().Set("Retry-After", "86400")
-		http.Error(w, "429 too many requests", http.StatusTooManyRequests)
+		renderUserErrorPage(r.Context(), w, http.StatusTooManyRequests, "Session size limit reached. Either the URL you are logging into is too long, or you had too many unsuccessful logins in the last 24 hours.")
 		return
 	}
 	if err != nil {
 		appLogger(r.Context()).Error("error saving session", "error", err)
-		http.Error(w, "500 internal server error", http.StatusInternalServerError)
+		renderUserErrorPage(r.Context(), w, http.StatusInternalServerError, "Error saving session")
 		return
 	}
 
@@ -320,9 +320,7 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 	}
 	output, err := validationResponse(&success, nil, useJSON)
 	if err != nil {
-		appLogger(r.Context()).Error("error generating validation response", "error", err, "success", success)
-		w.WriteHeader(http.StatusInternalServerError)
-		http.Error(w, "error generating validation response", http.StatusInternalServerError)
+		outputFailure(r.Context(), w, err, "INTERNAL_ERROR", "error generating validation response", useJSON)
 		return
 	}
 
@@ -395,27 +393,27 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 		// Consider this a warning-level error for logging purposes.
 		err := fmt.Errorf("%s: %s", errParam, errDescription)
 		appLogger(r.Context()).Warn("login aborted", "error", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		renderCallbackErrorPage(r.Context(), w, http.StatusBadRequest, "Login was cancelled")
 		return
 	}
 	if errParam != "" {
 		err := fmt.Errorf("%s: %s", errParam, errDescription)
 		appLogger(r.Context()).Error("login error", "error", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		renderCallbackErrorPage(r.Context(), w, http.StatusBadRequest, "Login error occurred")
 		return
 	}
 
 	code := params.Get("code")
 	if code == "" {
 		appLogger(r.Context()).Warn("invalid request")
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		renderCallbackErrorPage(r.Context(), w, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
 	state := params.Get("state")
 	if state == "" {
 		appLogger(r.Context()).Warn("missing state")
-		http.Error(w, "missing state", http.StatusBadRequest)
+		renderCallbackErrorPage(r.Context(), w, http.StatusBadRequest, "Missing state parameter")
 		return
 	}
 
@@ -424,7 +422,7 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	var ok bool
 	if service, ok = session.Values[state].(string); !ok {
 		appLogger(r.Context()).Warn("session missing or expired")
-		http.Error(w, "session missing or expired", http.StatusBadRequest)
+		renderCallbackErrorPage(r.Context(), w, http.StatusBadRequest, "Session missing or expired")
 		return
 	}
 
@@ -434,7 +432,7 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	serviceURL, err := url.Parse(service)
 	if err != nil {
 		appLogger(r.Context()).Warn("invalid service URL")
-		http.Error(w, "invalid service URL", http.StatusBadRequest)
+		renderCallbackErrorPage(r.Context(), w, http.StatusBadRequest, "Invalid service URL")
 		return
 	}
 
@@ -523,34 +521,4 @@ func getLogoutParams(ctx context.Context, returnTo string) *url.Values {
 		"client_id", casClient.ClientID)
 
 	return nil
-}
-
-// outputFailure handles a common case of reporting a problem to the
-// /cas/serviceValidate URL, which is expected to return a properly-formatted
-// error. This logs the issue, and formats and outputs the response (default
-// 200 status code). If the response cannot be formatted, an additional error
-// is logged and a plain-text message and 500 response is output.
-func outputFailure(ctx context.Context, w http.ResponseWriter, err error, code, description string, useJSON bool) {
-	switch {
-	case err != nil:
-		appLogger(ctx).Error(description, "error", err)
-	default:
-		appLogger(ctx).Warn(description)
-	}
-
-	failure := casAuthenticationFailure{code, description}
-	output, err := validationResponse(nil, &failure, useJSON)
-	if err != nil {
-		appLogger(ctx).Error("error generating validation response", "error", err, "failure", failure)
-		w.WriteHeader(http.StatusInternalServerError)
-		http.Error(w, "error generating validation response", http.StatusInternalServerError)
-		return
-	}
-	switch useJSON {
-	case true:
-		w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-	default:
-		w.Header().Set("Content-Type", "application/xml;charset=UTF-8")
-	}
-	fmt.Fprintf(w, "%s\n", output)
 }
