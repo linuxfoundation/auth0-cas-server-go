@@ -15,8 +15,8 @@ bin/auth0-cas-server-go: *.go go.mod go.sum
 all: bin/auth0-cas-server-go docker-build
 
 lint:
-	docker pull --platform linux/amd64 oxsecurity/megalinter-go:v8
-	docker run --rm --platform linux/amd64 -v '$(CURDIR):/tmp/lint:rw' oxsecurity/megalinter-go:v8
+	docker pull --platform linux/amd64 ghcr.io/oxsecurity/megalinter-go:v9.6.0@sha256:afca746c26a0f75834ccd06413948d8c73caec656d5af8049371b143afded759
+	docker run --rm --platform linux/amd64 -v '$(CURDIR):/tmp/lint:rw' ghcr.io/oxsecurity/megalinter-go:v9.6.0@sha256:afca746c26a0f75834ccd06413948d8c73caec656d5af8049371b143afded759
 
 test:
 	@echo "No tests to run ... would you like to 'make lint'?"
