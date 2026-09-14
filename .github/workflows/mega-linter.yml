@@ -34,7 +34,7 @@ jobs:
       - name: MegaLinter
         id: ml
         # Use the Go flavor. Keep this version in sync with the
-        # `megalinter` target in the Makefile.
+        # `lint` target in the Makefile.
         uses: oxsecurity/megalinter/flavors/go@ef3e84b8b836d76db562d0f3ed7da61e8fd538bc # v9.6.0
         env:
           # Only Actions-specific values (secrets, runner behavior) belong
@@ -47,3 +47,5 @@ jobs:
           # zizmor's "artipacked" audit needs the GitHub API (to verify
           # SHA-pinned action tags), which requires GITHUB_TOKEN.
           ACTION_ZIZMOR_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN
+          # Allow GITHUB_TOKEN for working around rate limits (aquasecurity/trivy#7668).
+          REPOSITORY_TRIVY_UNSECURED_ENV_VARIABLES: GITHUB_TOKEN

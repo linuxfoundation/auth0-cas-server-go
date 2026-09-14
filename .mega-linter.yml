@@ -15,4 +15,8 @@ DISABLE_LINTERS:
 DISABLE_ERRORS_LINTERS:
   # These are informative but don't need to break the build.
   - COPYPASTE_JSCPD
+  # There's no easy local feedback loop for spelling issues before
+  # pushing, so keep them non-blocking to avoid unnecessary PR cycles
+  # for words that just need adding to the dictionary.
+  - SPELL_CSPELL
 GITHUB_COMMENT_REPORTER: false
