@@ -31,7 +31,10 @@
     "semconv",
     "securecookie",
     "zoneinfo",
-    "chardata"
+    "chardata",
+    "zizmor",
+    "artipacked",
+    "gotoolchain"
   ],
   "flagWords": [
     "abort",

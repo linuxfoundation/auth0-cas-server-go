@@ -20,16 +20,21 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
-      - uses: ko-build/setup-ko@v0.8
+      - uses: ko-build/setup-ko@61b4d1d396f5b2e7d6bb6fefdce3dc38d1a13445 # v0.10
         with:
           version: v0.18.0
-      - run: |
+      - name: Build and push image
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
           ko build . \
             --bare \
             --platform linux/amd64,linux/arm64 \
-            -t latest -t ${{ github.sha }} \
+            -t latest -t "${GIT_SHA}" \
             --sbom spdx
