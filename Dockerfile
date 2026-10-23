@@ -27,8 +27,9 @@ RUN go build -o /go/bin/auth0-cas-server-go -trimpath -ldflags="-w -s" github.co
 # Run our go binary standalone
 FROM cgr.dev/chainguard/static:latest
 
-# Implicit with base image: setting explicitly for linters.
-USER nonroot
+# Implicit with base image: setting explicitly for linters. Numeric UID
+# (rather than the "nonroot" alias) per hadolint DL3066.
+USER 65532
 
 EXPOSE 8080
 
