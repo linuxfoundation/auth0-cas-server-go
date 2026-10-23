@@ -1,7 +1,7 @@
 # Copyright The Linux Foundation and its contributors.
 # SPDX-License-Identifier: MIT
 
-.PHONY: docker-build ko-build-local
+.PHONY: docker-build ko-build-local megalinter
 
 IMAGE_NAME ?= linuxfoundation/auth0-cas-server-go
 
@@ -14,12 +14,16 @@ bin/auth0-cas-server-go: *.go go.mod go.sum
 
 all: bin/auth0-cas-server-go docker-build
 
-lint:
-	docker pull --platform linux/amd64 ghcr.io/oxsecurity/megalinter-go:v9.6.0@sha256:afca746c26a0f75834ccd06413948d8c73caec656d5af8049371b143afded759
-	docker run --rm --platform linux/amd64 -v '$(CURDIR):/tmp/lint:rw' ghcr.io/oxsecurity/megalinter-go:v9.6.0@sha256:afca746c26a0f75834ccd06413948d8c73caec656d5af8049371b143afded759
+# Run MegaLinter locally via Docker (matches CI Go flavor at v10.1.0).
+# Keep this digest in sync with .github/workflows/mega-linter.yml.
+MEGALINTER_IMAGE := ghcr.io/oxsecurity/megalinter-go@sha256:42e091a4bcbe9141fe420c2520ed7addf75ae60a0c9d42e3df1278eef1c90a88  # v10.1.0
+
+megalinter:
+	docker pull $(MEGALINTER_IMAGE)
+	docker run --rm --platform linux/amd64 -e GOTOOLCHAIN=auto -v '$(CURDIR):/tmp/lint:rw' $(MEGALINTER_IMAGE)
 
 test:
-	@echo "No tests to run ... would you like to 'make lint'?"
+	@echo "No tests to run ... would you like to 'make megalinter'?"
 
 # Build and label a local Docker container of auth0-cas-server-go.
 docker-build:

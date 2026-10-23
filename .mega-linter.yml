@@ -5,8 +5,7 @@ DISABLE_LINTERS:
   # Skipping for now.
   - HTML_DJLINT
   - HTML_HTMLHINT
-  # Revive covers this, plus golangci-lint has trouble with newer go toolchains
-  # in go.mod.
+  # Revive is this service's Go linter.
   - GO_GOLANGCI_LINT
   # Link checking more likely to cause false positives than be useful for us.
   - SPELL_LYCHEE
