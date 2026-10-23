@@ -3,7 +3,7 @@
 ## Build/Test Commands
 - `make` or `make bin/auth0-cas-server-go` - Build binary
 - `make all` - Build binary and Docker container
-- `make lint` - Run mega-linter with Go linting rules
+- `make megalinter` - Run MegaLinter with Go linting rules
 - `make docker-build` - Build Docker container
 - `go run .` - Run directly with Go
 
