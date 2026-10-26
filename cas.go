@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base32"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -217,10 +218,15 @@ func casServiceValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authCode := strings.TrimPrefix(ticket, "ST-A")
-	if authCode == ticket {
+	ticketBody := strings.TrimPrefix(ticket, "ST-A")
+	if ticketBody == ticket {
 		// Not having an ST-A prefix means the ticket is unknown; see oauth2Callback.
 		outputFailure(r.Context(), w, nil, "INVALID_TICKET", "foreign ticket not recognized", useJSON)
+		return
+	}
+	authCode, err := authCodeFromTicketBody(ticketBody)
+	if err != nil {
+		outputFailure(r.Context(), w, nil, "INVALID_TICKET", "ticket not recognized", useJSON)
 		return
 	}
 
@@ -439,10 +445,33 @@ func oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	// ST- is required by CAS spec, and we add "A" for "authentication code", in
 	// case we support different ticket types in the future.
 	newParams := serviceURL.Query()
-	newParams.Set("ticket", fmt.Sprintf("ST-A%s", code))
+	newParams.Set("ticket", fmt.Sprintf("ST-A%s", ticketBodyFromAuthCode(code)))
 	serviceURL.RawQuery = newParams.Encode()
 
+	appLogger(r.Context()).Debug("issued service ticket", "service", serviceURL.Host)
+
 	http.Redirect(w, r, serviceURL.String(), http.StatusFound)
+}
+
+// ticketEncoding encodes Auth0 authorization codes into service ticket bodies.
+// The CAS protocol restricts tickets to A-Z, a-z, 0-9, and "-", and Auth0
+// codes may contain "_", so they are base32-encoded.
+var ticketEncoding = base32.StdEncoding.WithPadding(base32.NoPadding)
+
+// ticketBodyFromAuthCode encodes an Auth0 authorization code as a service
+// ticket body.
+func ticketBodyFromAuthCode(code string) string {
+	return ticketEncoding.EncodeToString([]byte(code))
+}
+
+// authCodeFromTicketBody decodes a service ticket body into an Auth0
+// authorization code.
+func authCodeFromTicketBody(ticketBody string) (string, error) {
+	code, err := ticketEncoding.DecodeString(ticketBody)
+	if err != nil {
+		return "", err
+	}
+	return string(code), nil
 }
 
 func oauth2CfgFromAuth0Client(client auth0ClientStub, casHostname string) oauth2.Config {
