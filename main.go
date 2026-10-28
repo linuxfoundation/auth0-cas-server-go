@@ -33,6 +33,12 @@ var (
 	httpClient = http.DefaultClient
 )
 
+// Version is the application version, set at build time via -ldflags (see
+// the Makefile and .ko.yaml). Used to populate the OpenTelemetry
+// service.version resource attribute, so traces can be associated with the
+// exact commit they were built from.
+var Version = "dev"
+
 // main parses optional flags and starts http listener.
 func main() {
 	var debug = flag.Bool("d", false, "enable debug logging")

@@ -56,6 +56,7 @@ func initOTLP() func() {
 		res, err := resource.New(ctx,
 			resource.WithAttributes(
 				semconv.ServiceNameKey.String(serviceName),
+				semconv.ServiceVersionKey.String(Version),
 			),
 		)
 		if err != nil {

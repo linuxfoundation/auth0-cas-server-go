@@ -1,0 +1,6 @@
+---
+builds:
+  - id: auth0-cas-server-go
+    dir: .
+    ldflags:
+      - -X=main.Version={{.Env.VERSION}}
