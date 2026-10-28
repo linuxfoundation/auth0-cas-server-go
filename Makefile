@@ -7,10 +7,15 @@ IMAGE_NAME ?= linuxfoundation/auth0-cas-server-go
 
 GIT_HASH = $(shell git describe --dirty --always)
 
+# Exported so .ko.yaml's {{.Env.VERSION}} template resolves, and so the
+# resulting binary's main.Version (used for the OTel service.version resource
+# attribute) matches the actual commit built.
+export VERSION := $(GIT_HASH)
+
 # The default target creates a local build of auth0-cas-server-go.
 bin/auth0-cas-server-go: *.go go.mod go.sum
 	@mkdir -p bin
-	go build -o bin/auth0-cas-server-go github.com/linuxfoundation/auth0-cas-server-go
+	go build -o bin/auth0-cas-server-go -ldflags="-X main.Version=$(VERSION)" github.com/linuxfoundation/auth0-cas-server-go
 
 all: bin/auth0-cas-server-go docker-build
 
