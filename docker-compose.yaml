@@ -25,28 +25,19 @@ services:
 
   # Jaeger
   jaeger-all-in-one:
-    image: docker.io/jaegertracing/all-in-one:1.28
+    image: docker.io/jaegertracing/all-in-one:1.76.0
     ports:
       - "16686:16686"
-      - "14268"
-      - "14250"
 
   # Use OTEL Collector locally, instead of DD Agent, to route to both DD and
   # Jaeger. We don't use OTEL Collector in ECS deployment, because configuring
   # it with environmental variables is a pain, and mounting a config file in
   # ECS is non-trivial as well.
   otel-collector:
-    image: docker.io/otel/opentelemetry-collector-contrib:0.66.0
+    image: docker.io/otel/opentelemetry-collector-contrib:0.164.0
     volumes:
       - ./otel_collector_local.yaml:/etc/otel/config.yaml
     command: ["--config=/etc/otel/config.yaml"]
-    ports:
-      - "1888:1888"    # pprof extension
-      - "8888:8888"    # Prometheus metrics exposed by the collector
-      - "8889:8889"    # Prometheus exporter metrics
-      - "13133:13133"  # health_check extension
-      - "4317:4317"    # OTLP gRPC receiver
-      - "55670:55679"  # zpages extension
     environment:
       - DD_API_KEY
       - DD_ENV
