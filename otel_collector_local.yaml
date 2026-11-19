@@ -2,10 +2,14 @@
 # SPDX-License-Identifier: MIT
 ---
 receivers:
-  # OTLP will receive traces from our application.
+  # OTLP will receive traces from our application. Newer collector versions
+  # default this to binding localhost only; bind 0.0.0.0 explicitly so
+  # other containers on the compose network (e.g. auth0-cas-server-go) can
+  # reach it.
   otlp:
     protocols:
       grpc:
+        endpoint: 0.0.0.0:4317
   # The hostmetrics receiver is required to get correct infrastructure metrics
   # in Datadog.
   hostmetrics:
@@ -57,8 +61,10 @@ exporters:
       key: ${DD_API_KEY}
     traces:
       ignore_resources: ["GET /ping"]
-  jaeger:
-    endpoint: jaeger-all-in-one:14250
+  # Jaeger has accepted OTLP natively since 1.35, so we export to it via
+  # OTLP instead of the removed jaeger exporter.
+  otlp/jaeger:
+    endpoint: jaeger-all-in-one:4317
     tls:
       insecure: true
 
@@ -71,4 +77,4 @@ service:
     traces:
       receivers: [otlp]
       processors: [resource, batch]
-      exporters: [datadog, jaeger]
+      exporters: [datadog, otlp/jaeger]
