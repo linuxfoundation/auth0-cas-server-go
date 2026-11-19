@@ -32,7 +32,7 @@ test:
 
 # Build and label a local Docker container of auth0-cas-server-go.
 docker-build:
-	docker build -t $(IMAGE_NAME):$(GIT_HASH) -t $(IMAGE_NAME):latest .
+	docker build --build-arg VERSION=$(VERSION) -t $(IMAGE_NAME):$(GIT_HASH) -t $(IMAGE_NAME):latest .
 
 ko-build-local: bin/auth0-cas-server-go
 	ko build --local --tags $(GIT_HASH),latest --platform linux/amd64,linux/arm64 --sbom-dir sbom github.com/linuxfoundation/auth0-cas-server-go
