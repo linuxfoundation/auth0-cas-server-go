@@ -32,6 +32,7 @@ jobs:
       - name: Build and push image
         env:
           GIT_SHA: ${{ github.sha }}
+          VERSION: ${{ github.sha }}
         run: |
           ko build . \
             --bare \

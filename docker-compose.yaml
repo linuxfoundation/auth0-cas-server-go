@@ -6,7 +6,10 @@ services:
   auth0-cas-server-go:
     image: linuxfoundation/auth0-cas-server-go:latest
     pull_policy: never
-    build: .
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
     ports:
       - "8080:8080"
     environment:

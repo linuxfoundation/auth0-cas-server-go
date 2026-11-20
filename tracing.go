@@ -49,21 +49,26 @@ func initOTLP() func() {
 		sdktrace.WithSpanProcessor(bsp),
 	}
 
-	// If OTEL_SERVICE_NAME name is set, assume the user is using that and
-	// OTEL_RESOURCE_ATTRIBUTES to define the resource and use autodiscovery.
-	// If it's not set: create the resource manually with a default service name.
-	if _, ok := os.LookupEnv("OTEL_SERVICE_NAME"); !ok {
-		res, err := resource.New(ctx,
-			resource.WithAttributes(
-				semconv.ServiceNameKey.String(serviceName),
-			),
-		)
-		if err != nil {
-			slog.Error("failed to create resource", "error", err)
-			os.Exit(1)
-		}
-		opts = append(opts, sdktrace.WithResource(res))
+	// The build version always applies. The service name comes from
+	// OTEL_SERVICE_NAME when set, otherwise the default. Other resource
+	// attributes come from OTEL_RESOURCE_ATTRIBUTES.
+	name := os.Getenv("OTEL_SERVICE_NAME")
+	if name == "" {
+		name = serviceName
 	}
+	res, err := resource.New(ctx,
+		resource.WithFromEnv(),
+		resource.WithTelemetrySDK(),
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(name),
+			semconv.ServiceVersionKey.String(Version),
+		),
+	)
+	if err != nil {
+		slog.Error("failed to create resource", "error", err)
+		os.Exit(1)
+	}
+	opts = append(opts, sdktrace.WithResource(res))
 
 	tracerProvider := sdktrace.NewTracerProvider(opts...)
 

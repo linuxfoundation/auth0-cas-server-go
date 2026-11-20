@@ -21,8 +21,10 @@ RUN go mod download
 # Copy the code into the container
 COPY . .
 
-# Build the packages
-RUN go build -o /go/bin/auth0-cas-server-go -trimpath -ldflags="-w -s" github.com/linuxfoundation/auth0-cas-server-go
+# Build the packages. VERSION is declared here so that it only invalidates
+# the build layer, not the dependency download layer.
+ARG VERSION=dev
+RUN go build -o /go/bin/auth0-cas-server-go -trimpath -ldflags="-w -s -X main.Version=${VERSION}" github.com/linuxfoundation/auth0-cas-server-go
 
 # Run our go binary standalone
 FROM cgr.dev/chainguard/static:latest

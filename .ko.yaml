@@ -1,0 +1,8 @@
+# Copyright The Linux Foundation and each contributor.
+# SPDX-License-Identifier: MIT
+---
+builds:
+  - id: auth0-cas-server-go
+    dir: .
+    ldflags:
+      - -X=main.Version={{.Env.VERSION}}
